@@ -7,8 +7,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "sds.h"
-#include "vec.h"
+#include "../lib/sds.h"
+#include "../lib/vec.h"
 
 typedef struct Header {
     sds name;
