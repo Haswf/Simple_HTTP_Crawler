@@ -35,4 +35,5 @@ Header *createHeader(sds name, sds value);
 
 int appendHeader(Request *req, char *name, char *value);
 
+int freeRequest(Request *req);
 #endif

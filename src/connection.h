@@ -2,8 +2,8 @@
 // Created by Haswe on 3/22/2020.
 //
 
-#ifndef COMP30023_2020_PROJECT1_HTTP_H
-#define COMP30023_2020_PROJECT1_HTTP_H
+#ifndef COMP30023_2020_PROJECT1_CONNECTION_H
+#define COMP30023_2020_PROJECT1_CONNECTION_H
 
 #include <stdio.h> /* printf, sprintf */
 #include <stdlib.h> /* exit, atoi, malloc, free */
@@ -13,8 +13,14 @@
 #include <netinet/in.h> /* struct sockaddr_in, struct sockaddr */
 #include <netdb.h> /* struct hostent, gethostbyname */
 #include <time.h>
-#include "request.h"
+#include "../lib/sds.h"
 
-void error(const char *msg);
+int create_connection(sds host, int portno);
 
-#endif //COMP30023_2020_PROJECT1_HTTP_H
+int send_to_server(int sockfd, char *message);
+
+int close_connection(int sockfd);
+
+char *receive_from_server(int sockfd);
+
+#endif //COMP30023_2020_PROJECT1_CONNECTION_H

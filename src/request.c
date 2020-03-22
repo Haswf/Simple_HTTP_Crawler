@@ -93,11 +93,9 @@ int freeHeader(Header *header) {
  * @return
  */
 int freeRequest(Request *req) {
-    sdsfree(req->method);
     sdsfree(req->path);
-    sdsfree(req->version);
-    sdsfree(req->body);
     sdsfree(req->method);
+    sdsfree(req->version);
     sdsfree(req->body);
     int i;
     Header *header;
