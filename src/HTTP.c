@@ -5,6 +5,8 @@
 
 #include "HTTP.h"
 #include "connection.h"
+#include "response.h"
+
 #define RESPONSE_BUFFER 100001
 #define PORT 80
 
@@ -15,7 +17,7 @@ void error(const char *msg) {
 
 
 int main(int argc, char *argv[]) {
-    sds host = sdsnew("www.google.com");
+    sds host = sdsnew("www.pcre.org");
     sds path = sdsnew("/");
     sds method = sdsnew("GET");
     printf("Fetching URL %s %s\n", host, path);
@@ -37,13 +39,14 @@ int main(int argc, char *argv[]) {
 
     char *response = receive_from_server(sockfd);
 
-    printf("\nResponse:\n%s\n", response);
+//    printf("\nResponse:\n%s\n", response);
+
+    parseHTTPResponse(response);
 
     close_connection(sockfd);
 ////    sds test = sdsnew("Hello");
 //    sdsfree(req_p->method);
-
-    free(response);
+//    free(response);
 //    freeRequest(req);
 //    sdsfree(req);
     return 0;

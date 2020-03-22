@@ -3,7 +3,6 @@ project(comp30023-2020-project1)               # Create project "simple_example"
 set(CMAKE_CXX_STANDARD 99)            # Enable c++14 standard
 
 # Add main.cpp file of project root directory as source file
-set(SOURCE_FILES src/request.c lib/sds.c src/HTTP.c lib/vec.c src/request.h src/HTTP.h src/connection.c src/connection.h)
-
+set(SOURCE_FILES src/request.c lib/sds.c src/HTTP.c lib/vec.c src/request.h src/HTTP.h src/connection.c src/connection.h src/response.c src/response.h lib/pbl.h lib/pbl.c lib/pblMap.c lib/pblStringBuilder.c lib/pblhash.c lib/pblIterator.c lib/pblList.c lib/pblList.c lib/pblSet.c lib/pblCollection.c)
 # Add executable target with source files listed in SOURCE_FILES variable
 add_executable(crawler ${SOURCE_FILES})
