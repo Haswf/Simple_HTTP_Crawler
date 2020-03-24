@@ -45,9 +45,7 @@ Response *parse_response(sds *buffer) {
         } else {
             split = sdssplitlen(lines[j], sdslen(lines[j]), ":", 1, &split_count);
             // Add header to map
-            sds value = sdstrim(split[1], " \n");
-            map_set(response->header, split[0], value);
-            sdsfree(value);
+            map_set(response->header, split[0], sdstrim(split[1], " \n"));
             sdsfreesplitres(split, split_count);
         }
     }
