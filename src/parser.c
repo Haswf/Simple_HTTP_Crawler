@@ -3,6 +3,14 @@
 //
 #include "parser.h"
 #include "response.h"
+#include "../lib/uriparser/Uri.h"
+#include "../lib/uriparser/UriBase.h"
+#include "../lib/uriparser/UriBase.h"
+#include "../lib/uriparser/UriDefsAnsi.h"
+#include "../lib/uriparser/UriDefsConfig.h"
+#include "../lib/uriparser/UriDefsUnicode.h"
+#include "../lib/uriparser/UriIp4.h"
+
 
 static void search_for_links(GumboNode *node) {
 
@@ -27,4 +35,43 @@ void print_url(Response *response) {
     gumbo_destroy_output(&kGumboDefaultOptions, output);
 }
 
+void resolve_relative_path() {
+    UriUriA absoluteDest;
+    UriUriA relativeSource;
+    UriUriA absoluteBase;
+    sds uri = sdsempty();
 
+    const char *errorPos;
+
+    if (uriParseSingleUriA(&absoluteBase, "http://www.google.com", &errorPos) != URI_SUCCESS) {
+//        /* Failure (no need to call uriFreeUriMembersA) */return ...;
+    }
+
+    if (uriParseSingleUriA(&relativeSource, "./test.html", &errorPos) != URI_SUCCESS) {
+//        /* Failure (no need to call uriFreeUriMembersA) */return ...;
+    }
+
+
+    /* relativeSource holds "../TWO" now */
+    /* absoluteBase holds "file:///one/two/three" now */
+    if (uriAddBaseUriA(&absoluteDest, &relativeSource, &absoluteBase) != URI_SUCCESS) {
+        /* Failure */
+        uriFreeUriMembersA(&absoluteDest);
+    }
+
+    int charsRequired;
+
+    if (uriToStringCharsRequiredA(&absoluteDest, &charsRequired) != URI_SUCCESS) {
+        /* Failure */
+    }
+    charsRequired++;
+    sds uriString = sdsempty();
+    if (uriToStringA(uriString, &absoluteDest, charsRequired, NULL) != URI_SUCCESS) {
+
+    }
+
+
+    /* absoluteDest holds "file:///one/TWO" now */
+    printf("Resolved path: %s\n", uriString);
+    uriFreeUriMembersA(&absoluteDest);
+}

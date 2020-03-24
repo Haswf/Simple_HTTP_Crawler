@@ -17,11 +17,12 @@ int main(int agrc, char *argv[]) {
     add_header(request, "User-Agent", "shuyangf");
 
     Response *response = send_http_request(request, PORT);
-    free_request(request);
-    request = NULL;
+//    free_request(request);
+//    request = NULL;
 
-//    print_header(response);
-//    print_body(response);
-//    print_url(response);
+    print_header(response);
+    print_body(response);
+    print_url(response);
     free_response(response);
+//    resolve_relative_path();
 }
