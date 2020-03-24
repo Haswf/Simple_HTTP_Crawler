@@ -41,7 +41,7 @@
 #define URI_PARSE_BASE_H 1
 
 
-#include <uriparser/UriBase.h>
+#include "UriBase.h"
 
 
 void uriWriteQuadToDoubleByte(const unsigned char *hexDigits, int digitCount,

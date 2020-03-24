@@ -41,8 +41,9 @@
  || (defined(URI_PASS_UNICODE) && !defined(URI_COMMON_H_UNICODE)) \
  || (!defined(URI_PASS_ANSI) && !defined(URI_PASS_UNICODE))
 /* What encodings are enabled? */
-#include <uriparser/UriDefsConfig.h>
+#include "UriDefsConfig.h"
 
+#endif
 #if (!defined(URI_PASS_ANSI) && !defined(URI_PASS_UNICODE))
 /* Include SELF twice */
 # ifdef URI_ENABLE_ANSI
@@ -61,10 +62,10 @@
  && !defined(URI_COMMON_H_UNICODE) && defined(URI_ENABLE_UNICODE))
 # ifdef URI_PASS_ANSI
 #  define URI_COMMON_H_ANSI 1
-#  include <uriparser/UriDefsAnsi.h>
+#  include "UriDefsAnsi.h"
 # else
 #  define URI_COMMON_H_UNICODE 1
-#  include <uriparser/UriDefsUnicode.h>
+#  include "UriDefsUnicode.h"
 # endif
 
 
@@ -106,5 +107,4 @@ void URI_FUNC(FixEmptyTrailSegment)(URI_TYPE(Uri) * uri,
         UriMemoryManager * memory);
 
 
-#endif
 #endif

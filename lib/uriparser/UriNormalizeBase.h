@@ -41,7 +41,7 @@
 #define URI_NORMALIZE_BASE_H 1
 
 
-#include <uriparser/UriBase.h>
+#include "UriBase.h"
 
 
 UriBool uriIsUnreserved(int code);
