@@ -7,12 +7,6 @@
 
 #define RESPONSE_BUFFER 100001
 
-//void error(const char *msg) {
-//    perror(msg);
-//    exit(0);
-//}
-
-
 int create_connection(sds host, int portno) {
     struct hostent *server;
     struct sockaddr_in serv_addr;
@@ -38,12 +32,7 @@ int create_connection(sds host, int portno) {
     return sockfd;
 }
 
-//
-//
-//int main(int argc, char* argv[]){
-//    create_connection("google.com", 80);
-//}
-int send_to_server(int sockfd, char *message) {
+int send_to_server(int sockfd, sds message) {
     int total, sent, bytes;
     sent = 0;
     total = strlen(message);
@@ -67,16 +56,15 @@ int close_connection(int sockfd) {
     return 0;
 }
 
-char *receive_from_server(int sockfd) {
+void receive_from_server(int sockfd, sds *buffer) {
     int total, received, bytes;
-    char *response = (char *) calloc(10, sizeof(char));
 
     /* receive the response */
     total = RESPONSE_BUFFER - 1;
     received = 0;
 
     while (received < total) {
-        bytes = recv(sockfd, response + received, total - received, 0);
+        bytes = recv(sockfd, *buffer + received, total - received, 0);
         printf("%d/%d bytes received\t%d/%d bytes free \n", bytes, bytes + received, total - received, total);
         /* Receive up to the buffer size (minus 1 to leave space for
            a null terminator) bytes from the sender */
@@ -90,5 +78,5 @@ char *receive_from_server(int sockfd) {
 
     if (received == total)
         error("ERROR storing complete response from socket");
-    return response;
+    sdsRemoveFreeSpace(*buffer);
 }

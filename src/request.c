@@ -1,9 +1,8 @@
 //
 // Created by Haswe on 3/20/2020.
 
+#include <assert.h>
 #include "request.h"
-
-#define RESPONSE_BUFFER 4096
 
 /**
  * Create a HTTP Request
@@ -14,15 +13,17 @@
  * @param body
  * @return
  */
-Request *createHTTPRequest(sds host, sds path, sds method, vec_header_t *vec_header_p, sds body) {
-    Request *request = calloc(1, sizeof(Request));
+Request *create_http_request(sds host, sds path, sds method, sds body) {
+    Request *request = malloc(sizeof(Request));
+    assert(request != NULL);
     request->method = method;
     request->path = path;
-    request->version = "HTTP/1.1";
-    request->headers = vec_header_p;
+    request->version = sdsnew("HTTP/1.1");
+    sds_map_t *header = malloc(sizeof(*header));
+    request->header = header;
     request->body = body;
     request->host = host;
-    appendHeader(request, "Host", host);
+    add_header(request, "Host", host);
     return request;
 };
 
@@ -34,30 +35,16 @@ Request *createHTTPRequest(sds host, sds path, sds method, vec_header_t *vec_hea
 sds HTTPRequestToString(Request *req) {
     sds reqString = sdsempty();
     reqString = sdscat(reqString, sdscatprintf(sdsempty(), "%s %s %s\r\n", req->method, req->path, req->version));
-    /* Iterates and prints the value and index of each value in the float vec */
-    int i;
-    Header *header;
-    vec_foreach(req->headers, header, i) {
-            sds headerString = sdscatprintf(sdsempty(), "%s: %s\r\n", header->name, header->value);
-            reqString = sdscat(reqString, headerString);
-        }
+    const char *key;
+    map_iter_t iter = map_iter(response->header);
+    while ((key = map_next(req->header, &iter))) {
+        reqString = sdscat(reqString, sdscatprintf(sdsempty(), "%s: %s\r\n", key, *map_get(req->header, key)));
+    }
     reqString = sdscat(reqString, "\r\n");
     reqString = sdscat(reqString, req->body);
     return reqString;
 }
 
-/**
- * Create a header
- * @param name
- * @param value
- * @return
- */
-Header *createHeader(sds name, sds value) {
-    Header *header = calloc(1, sizeof(Header));
-    header->name = name;
-    header->value = value;
-    return header;
-}
 
 /**
  * Add a header to request
@@ -66,25 +53,9 @@ Header *createHeader(sds name, sds value) {
  * @param value
  * @return
  */
-int appendHeader(Request *req, char *name, char *value) {
-    Header *new = createHeader(name, value);
-    vec_push(req->headers, new);
+int add_header(Request *req, char *name, char *value) {
+    map_set(req->header, name, value);
     return 0;
-}
-
-
-/**
- * Free memory allocated to a header
- * @param header
- * @return
- */
-int freeHeader(Header *header) {
-    free(header);
-    if (header == NULL) {
-        return 0;
-    } else {
-        return -1;
-    }
 }
 
 /**
@@ -92,16 +63,17 @@ int freeHeader(Header *header) {
  * @param req
  * @return
  */
-int freeRequest(Request *req) {
-    sdsfree(req->path);
+int free_request(Request *req) {
     sdsfree(req->method);
+    req->method = NULL;
+    sdsfree(req->host);
+    req->host = NULL;
+    sdsfree(req->path);
+    req->path = NULL;
     sdsfree(req->version);
+    req->version = NULL;
     sdsfree(req->body);
-    int i;
-    Header *header;
-    vec_foreach(req->headers, header, i) {
-            freeHeader(header);
-        };
-    vec_deinit(req->headers);
+    req->body = NULL;
+    map_deinit(req->header);
     free(req);;
 }

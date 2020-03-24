@@ -7,16 +7,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "../lib/sds.h"
-#include "../lib/vec.h"
-
-typedef struct Header {
-    sds name;
-    sds value;
-} Header;
+#include "../lib/sds/sds.h"
+#include "../lib/vec/vec.h"
+#include "../lib/map/map.h"
 
 /* Creates the type uint_vec_t for storing unsigned ints */
-typedef vec_t(Header*) vec_header_t;
+typedef map_t(sds) sds_map_t;
 
 typedef struct Request {
     sds method;
@@ -24,16 +20,15 @@ typedef struct Request {
     sds path;
     sds version;
     sds body;
-    vec_header_t *headers;
+    sds_map_t *header;
 } Request;
+
 
 sds HTTPRequestToString(Request *);
 
-Request *createHTTPRequest(sds host, sds path, sds method, vec_header_t *vec_header_p, sds body);
+Request *create_http_request(sds host, sds path, sds method, sds body);
 
-Header *createHeader(sds name, sds value);
+int add_header(Request *req, char *name, char *value);
 
-int appendHeader(Request *req, char *name, char *value);
-
-int freeRequest(Request *req);
+int free_request(Request *req);
 #endif

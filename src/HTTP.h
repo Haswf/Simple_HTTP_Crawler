@@ -14,7 +14,10 @@
 #include <netdb.h> /* struct hostent, gethostbyname */
 #include <time.h>
 #include "request.h"
+#include "response.h"
 
 void error(const char *msg);
+
+Response *send_http_request(Request *request, int portno);
 
 #endif //COMP30023_2020_PROJECT1_HTTP_H

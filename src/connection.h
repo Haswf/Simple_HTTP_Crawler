@@ -13,7 +13,7 @@
 #include <netinet/in.h> /* struct sockaddr_in, struct sockaddr */
 #include <netdb.h> /* struct hostent, gethostbyname */
 #include <time.h>
-#include "../lib/sds.h"
+#include "../lib/sds/sds.h"
 
 int create_connection(sds host, int portno);
 
@@ -21,6 +21,7 @@ int send_to_server(int sockfd, char *message);
 
 int close_connection(int sockfd);
 
-char *receive_from_server(int sockfd);
+void receive_from_server(int sockfd, sds *response);
+
 
 #endif //COMP30023_2020_PROJECT1_CONNECTION_H
