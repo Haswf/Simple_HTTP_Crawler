@@ -2,14 +2,6 @@
 // Created by Haswe on 3/25/2020.
 //
 #include "parser.h"
-#include "response.h"
-#include "../lib/uriparser/Uri.h"
-#include "../lib/uriparser/UriBase.h"
-#include "../lib/uriparser/UriBase.h"
-#include "../lib/uriparser/UriDefsAnsi.h"
-#include "../lib/uriparser/UriDefsConfig.h"
-#include "../lib/uriparser/UriDefsUnicode.h"
-#include "../lib/uriparser/UriIp4.h"
 
 
 static void search_for_links(GumboNode *node) {
@@ -35,43 +27,29 @@ void print_url(Response *response) {
     gumbo_destroy_output(&kGumboDefaultOptions, output);
 }
 
-void resolve_relative_path() {
-    UriUriA absoluteDest;
-    UriUriA relativeSource;
-    UriUriA absoluteBase;
-    sds uri = sdsempty();
+void add_to_job_queue(GumboNode *node, sds_vec_t *job_queue, int_map_t *seen) {
+    if (node->type != GUMBO_NODE_ELEMENT) {
+        return;
+    }
+    GumboAttribute *href;
+    if (node->v.element.tag == GUMBO_TAG_A &&
+        (href = gumbo_get_attribute(&node->v.element.attributes, "href"))) {
+        if (map_get(seen, href->value) == NULL) {
+            vec_push(job_queue, sdsnew(href->value));
 
-    const char *errorPos;
-
-    if (uriParseSingleUriA(&absoluteBase, "http://www.google.com", &errorPos) != URI_SUCCESS) {
-//        /* Failure (no need to call uriFreeUriMembersA) */return ...;
+        }
+//        printf("%s %d\n", href->value, job_queue->length);
     }
 
-    if (uriParseSingleUriA(&relativeSource, "./test.html", &errorPos) != URI_SUCCESS) {
-//        /* Failure (no need to call uriFreeUriMembersA) */return ...;
+    GumboVector *children = &node->v.element.children;
+    for (unsigned int i = 0; i < children->length; ++i) {
+        add_to_job_queue((GumboNode *) (children->data[i]), job_queue, seen);
     }
-
-
-    /* relativeSource holds "../TWO" now */
-    /* absoluteBase holds "file:///one/two/three" now */
-    if (uriAddBaseUriA(&absoluteDest, &relativeSource, &absoluteBase) != URI_SUCCESS) {
-        /* Failure */
-        uriFreeUriMembersA(&absoluteDest);
-    }
-
-    int charsRequired;
-
-    if (uriToStringCharsRequiredA(&absoluteDest, &charsRequired) != URI_SUCCESS) {
-        /* Failure */
-    }
-    charsRequired++;
-    sds uriString = sdsempty();
-    if (uriToStringA(uriString, &absoluteDest, charsRequired, NULL) != URI_SUCCESS) {
-
-    }
-
-
-    /* absoluteDest holds "file:///one/TWO" now */
-    printf("Resolved path: %s\n", uriString);
-    uriFreeUriMembersA(&absoluteDest);
 }
+
+void add_url(Response *response, sds_vec_t *job_queue, int_map_t *seen) {
+    GumboOutput *output = gumbo_parse(response->body);
+    add_to_job_queue(output->root, job_queue, seen);
+    gumbo_destroy_output(&kGumboDefaultOptions, output);
+}
+

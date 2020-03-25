@@ -45,7 +45,8 @@ Response *parse_response(sds *buffer) {
         } else {
             split = sdssplitlen(lines[j], sdslen(lines[j]), ":", 1, &split_count);
             // Add header to map
-            map_set(response->header, split[0], sdstrim(split[1], " \n"));
+            // TODO: Fix mem leak here as sdsnew create a sds which is never freed.
+            map_set(response->header, split[0], sdsnew(sdstrim(split[1], " \n")));
             sdsfreesplitres(split, split_count);
         }
     }
@@ -57,7 +58,7 @@ void print_header(Response *response) {
     sds key;
     map_iter_t iter = map_iter(response->header);
     printf("----- RESPONSE HEADER ------\n");
-    while ((key = (char *) map_next(response->header, &iter))) {
+    while ((key = (sds) map_next(response->header, &iter))) {
         printf("%s -> %s\n", key, *map_get(response->header, key));
     }
 }

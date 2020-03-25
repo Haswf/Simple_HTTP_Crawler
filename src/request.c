@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include "request.h"
+#include "crawler.h"
 
 /**
  * Create a HTTP Request
@@ -20,6 +21,7 @@ Request *create_http_request(sds host, sds path, sds method, sds body) {
     request->path = path;
     request->version = sdsnew("HTTP/1.1");
     sds_map_t *header = malloc(sizeof(*header));
+    map_init(header);
     request->header = header;
     request->body = body;
     request->host = host;

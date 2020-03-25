@@ -2,10 +2,8 @@
 // Created by Haswell on 3/20/2020.
 //
 
+#include "crawler.h"
 
-#include "HTTP.h"
-#include "connection.h"
-#include "response.h"
 #define RESPONSE_BUFFER 100001
 
 void error(const char *msg) {
@@ -15,8 +13,9 @@ void error(const char *msg) {
 
 
 Response *send_http_request(Request *request, int portno) {
-    int sockfd;
-    sockfd = create_connection(request->host, portno);
+    // Create a connection
+    int sockfd = create_connection(request->host, portno);
+    // Convert request to a string
     sds reqString = HTTPRequestToString(request);
     send_to_server(sockfd, reqString);
     sdsfree(reqString);

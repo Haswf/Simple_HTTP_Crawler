@@ -37,7 +37,7 @@ int send_to_server(int sockfd, sds message) {
     sent = 0;
     total = strlen(message);
     /* send the request */
-    printf("Sending message\n");
+//    printf("Sending message\n");
     do {
         bytes = write(sockfd, message + sent, total - sent);
         if (bytes < 0)
@@ -45,7 +45,7 @@ int send_to_server(int sockfd, sds message) {
         if (bytes == 0)
             break;
         sent += bytes;
-        printf("%d/%d bytes sent\n", sent, total);
+//        printf("%d/%d bytes sent\n", sent, total);
     } while (sent < total);
     return sent;
 }
@@ -65,7 +65,7 @@ void receive_from_server(int sockfd, sds *buffer) {
 
     while (received < total) {
         bytes = recv(sockfd, *buffer + received, total - received, 0);
-        printf("%d/%d bytes received\t%d/%d bytes free \n", bytes, bytes + received, total - received, total);
+//        printf("%d/%d bytes received\t%d/%d bytes free \n", bytes, bytes + received, total - received, total);
         /* Receive up to the buffer size (minus 1 to leave space for
            a null terminator) bytes from the sender */
         if (bytes < 0)
