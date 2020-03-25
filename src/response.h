@@ -5,13 +5,12 @@
 #ifndef COMP30023_2020_PROJECT1_RESPONSE_H
 #define COMP30023_2020_PROJECT1_RESPONSE_H
 
-#include "../lib/sds/sds.h"
-#include "../lib/map/map.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "./request.h"
-//typedef map_t(sds) sds_map_t;
+#include "connection.h"
+#include "collection.h"
 
 typedef struct Response {
     sds version;

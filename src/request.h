@@ -7,12 +7,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "../lib/sds/sds.h"
-#include "../lib/vec/vec.h"
-#include "../lib/map/map.h"
-
-/* Creates the type uint_vec_t for storing unsigned ints */
-typedef map_t(sds) sds_map_t;
+#include <assert.h>
+#include "collection.h"
 
 typedef struct Request {
     sds method;

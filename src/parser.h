@@ -19,7 +19,7 @@
 #include "../lib/uriparser/UriDefsConfig.h"
 #include "../lib/uriparser/UriDefsUnicode.h"
 #include "../lib/uriparser/UriIp4.h"
-#include "crawler.h"
+#include "../lib/log/log.h"
 
 void add_url(Response *response, sds_vec_t *job_queue, int_map_t *seen);
 

@@ -11,5 +11,6 @@
 
 typedef map_t(int) int_map_t;
 typedef vec_t(sds) sds_vec_t;
+typedef map_t(sds) sds_map_t;
 
 #endif //COMP30023_2020_PROJECT1_COLLECTION_H

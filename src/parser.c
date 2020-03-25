@@ -2,7 +2,7 @@
 // Created by Haswe on 3/25/2020.
 //
 #include "parser.h"
-
+#include "../lib/log/log.h"
 
 static void search_for_links(GumboNode *node) {
 
@@ -36,9 +36,8 @@ void add_to_job_queue(GumboNode *node, sds_vec_t *job_queue, int_map_t *seen) {
         (href = gumbo_get_attribute(&node->v.element.attributes, "href"))) {
         if (map_get(seen, href->value) == NULL) {
             vec_push(job_queue, sdsnew(href->value));
-
+            log_debug("%s added to the job queue", href->value);
         }
-//        printf("%s %d\n", href->value, job_queue->length);
     }
 
     GumboVector *children = &node->v.element.children;

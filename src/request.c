@@ -1,9 +1,7 @@
 //
 // Created by Haswe on 3/20/2020.
 
-#include <assert.h>
 #include "request.h"
-#include "crawler.h"
 
 /**
  * Create a HTTP Request

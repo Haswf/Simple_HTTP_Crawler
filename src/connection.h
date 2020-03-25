@@ -14,14 +14,14 @@
 #include <netdb.h> /* struct hostent, gethostbyname */
 #include <time.h>
 #include "../lib/sds/sds.h"
+#include "../lib/log/log.h"
 
-int create_connection(sds host, int portno);
+int create_connection(sds host, int portno, int *sockfd);
 
 int send_to_server(int sockfd, char *message);
 
 int close_connection(int sockfd);
 
-void receive_from_server(int sockfd, sds *response);
-
+int receive_from_server(int sockfd, sds *buffer);
 
 #endif //COMP30023_2020_PROJECT1_CONNECTION_H

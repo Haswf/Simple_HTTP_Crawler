@@ -5,13 +5,9 @@
 #ifndef COMP30023_2020_PROJECT1_CRAWLER_H
 #define COMP30023_2020_PROJECT1_CRAWLER_H
 
-#include "request.h"
 #include "HTTP.h"
-#include "connection.h"
-#include "response.h"
 #include "../lib/url_parser/url_parser.h"
 #include "collection.h"
-
 #include "parser.h"
 
 int process_header(Response *response);
