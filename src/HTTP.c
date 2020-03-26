@@ -5,8 +5,7 @@
 #include "connection.h"
 #include "request.h"
 #include "response.h"
-
-#define RESPONSE_BUFFER 100001
+#include "config.h"
 
 Response *send_http_request(Request *request, int portno, int *error) {
     // Socket file descriptor
@@ -20,6 +19,7 @@ Response *send_http_request(Request *request, int portno, int *error) {
     }
     // Convert request to a string
     sds reqString = HTTPRequestToString(request);
+    log_trace("\n---- HTTP Request -----\n%s--------------------------", reqString);
     *error = send_to_server(sockfd, reqString);
     if (*error != 0) {
         sdsfree(reqString);
@@ -36,8 +36,8 @@ Response *send_http_request(Request *request, int portno, int *error) {
         return NULL;
     } else {
         response = parse_response(&buffer);
+        print_header(response);
         sdsfree(buffer);
         return response;
     }
 }
-

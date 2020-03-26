@@ -20,10 +20,13 @@
 #include "../lib/uriparser/UriDefsUnicode.h"
 #include "../lib/uriparser/UriIp4.h"
 #include "../lib/log/log.h"
-
-void add_url(Response *response, sds_vec_t *job_queue, int_map_t *seen);
+#include "request.h"
 
 void print_url(Response *response);
-//void add_to_job_queue(GumboNode *node, sds_vec_t* job_queue);
+
+void add_url(Request *request, sds html, sds_vec_t *job_queue, int_map_t *seen);
+
+//void add_url(sds html, Request* request, sds_vec_t *job_queue, int_map_t *seen);
+void add_to_job_queue(sds host, GumboNode *node, sds_vec_t *job_queue, int_map_t *seen);
 
 #endif //COMP30023_2020_PROJECT1_PARSER_H

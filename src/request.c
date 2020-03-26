@@ -2,6 +2,7 @@
 // Created by Haswe on 3/20/2020.
 
 #include "request.h"
+#include "config.h"
 
 /**
  * Create a HTTP Request
@@ -17,7 +18,7 @@ Request *create_http_request(sds host, sds path, sds method, sds body) {
     assert(request != NULL);
     request->method = method;
     request->path = path;
-    request->version = sdsnew("HTTP/1.1");
+    request->version = sdsnew(HTTP_VERSION);
     sds_map_t *header = malloc(sizeof(*header));
     map_init(header);
     request->header = header;

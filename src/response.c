@@ -3,8 +3,8 @@
 //
 
 #include "response.h"
+#include "config.h"
 
-#define HEADER_BODY_SEPARATOR_SIZE 4
 
 Response *parse_response(sds *buffer) {
     sds message = *buffer;
@@ -43,11 +43,15 @@ Response *parse_response(sds *buffer) {
             response->reason_phrase = sdsnew(status_line[2]);
             sdsfreesplitres(status_line, field_count);
         } else {
-            split = sdssplitlen(lines[j], sdslen(lines[j]), ":", 1, &split_count);
+            // Locate the first colon
+            char *first_colon = strstr(lines[j], ":");
+            sds name = sdscpylen(sdsempty(), lines[j], strlen(lines[j]) - strlen(first_colon));
+            sds value = sdsnew(first_colon + 1);
+
             // Add header to map
-            // TODO: Fix mem leak here as sdsnew create a sds which is never freed.
-            map_set(response->header, split[0], sdsnew(sdstrim(split[1], " \n")));
-            sdsfreesplitres(split, split_count);
+            map_set(response->header, name, sdsnew(sdstrim(value, " \n")));
+            sdsfree(name);
+            sdsfree(value);
         }
     }
     sdsfreesplitres(lines, header_count);
@@ -57,9 +61,9 @@ Response *parse_response(sds *buffer) {
 void print_header(Response *response) {
     sds key;
     map_iter_t iter = map_iter(response->header);
-    printf("----- RESPONSE HEADER ------\n");
+    log_trace("----- RESPONSE HEADER ------\n");
     while ((key = (sds) map_next(response->header, &iter))) {
-        printf("%s -> %s\n", key, *map_get(response->header, key));
+        log_trace("%s -> %s\n", key, *map_get(response->header, key));
     }
 }
 
