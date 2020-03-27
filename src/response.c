@@ -61,15 +61,15 @@ Response *parse_response(sds *buffer) {
 void print_header(Response *response) {
     sds key;
     map_iter_t iter = map_iter(response->header);
-    log_trace("----- RESPONSE HEADER ------\n");
+    log_trace("----- RESPONSE HEADER ------");
     while ((key = (sds) map_next(response->header, &iter))) {
         log_trace("%s -> %s\n", key, *map_get(response->header, key));
     }
 }
 
 void print_body(Response *response) {
-    printf("----- RESPONSE BODY ------\n");
-    printf("%s\n", response->body);
+    log_trace("----- RESPONSE BODY ------");
+    log_trace("%s", response->body);
 }
 
 void free_response(Response *response) {

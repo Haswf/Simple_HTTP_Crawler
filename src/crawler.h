@@ -24,4 +24,6 @@ int add_to_queue(sds host, sds url, int_map_t *seen, sds_vec_t *job_queue);
 
 sds relative_to_absolute(sds path, sds host);
 
+int validate_content_length(Response *response);
+
 #endif //COMP30023_2020_PROJECT1_CRAWLER_H

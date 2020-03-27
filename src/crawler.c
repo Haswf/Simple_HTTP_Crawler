@@ -45,10 +45,11 @@ int do_crawler(sds url, sds_vec_t *job_queue, int_map_t *seen) {
         add_header(request, "User-Agent", USER_AGENT);
         Response *response = send_http_request(request, PORT, &error);
 
-//        process_header(response);
-//        print_body(response);
 
         if (!error) {
+            validate_content_length(response);
+            process_header(response);
+            print_body(response);
             // Successful
             if (response->status_code / 100 == 2) {
                 add_url(request, response->body, job_queue, seen);
@@ -150,7 +151,7 @@ int add_to_queue(sds host, sds url, int_map_t *seen, sds_vec_t *job_queue) {
         int *count = map_get(seen, url);
         if (count == NULL || *count == RETRY_FLAG) {
             log_debug("\t|+ %s added to the job queue", url);
-            return vec_push(job_queue, url);
+            return vec_insert(job_queue, 0, url);
         }
         return 1;
     }
@@ -163,4 +164,18 @@ sds relative_to_absolute(sds path, sds host) {
         return abs;
     }
     return NULL;
+}
+
+int validate_content_length(Response *response) {
+    sds *content_length = (sds *) map_get(response->header, "Content-Length");
+    if (content_length != NULL) {
+        int actual = sdslen(response->body);
+        int expected = atoi(*content_length);
+        if (expected == actual) {
+            return 0;
+        } else {
+            log_error("\t|- truncated page: Expected length: %d\t actual length:%d", expected, actual);
+            return 1;
+        }
+    }
 }
