@@ -18,6 +18,7 @@
  * URL storage
  */
 typedef struct parsed_url {
+    char *origin;
     char *scheme;               /* mandatory */
     char *host;                 /* mandatory */
     char *port;                 /* optional */
@@ -35,9 +36,9 @@ extern "C" {
 /*
  * Declaration of function prototypes
  */
-parsed_url_t *parse_url(sds);
+parsed_url_t *parse_url(char *);
 
-void parsed_url_free(struct parsed_url *);
+void parsed_url_free(parsed_url_t *);
 
 #ifdef __cplusplus
 }

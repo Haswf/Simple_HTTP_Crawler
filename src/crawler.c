@@ -1,9 +1,9 @@
 //
 // Created by Haswe on 3/25/2020.
 //
-#include "config.h"
-#include "crawler.h"
 
+
+#include "crawler.h"
 int main(int agrc, char *argv[]) {
     int total = 0;
     int failure = 0;
@@ -15,19 +15,30 @@ int main(int agrc, char *argv[]) {
     sds_vec_t *job_queue = malloc(sizeof(*job_queue));
     vec_init(job_queue);
 
-    vec_insert(job_queue, 0, argv[1]);
+    sds initial = sdsnew(argv[1]);
+
+    if (!is_valid_url(initial)) {
+        initial = add_scheme(initial, "http");
+    }
+
+    add_absolute_to_queue(initial, seen, job_queue);
 
     while (job_queue->length > 0) {
         int error = 0;
         sds url = vec_pop(job_queue);
         int *count = map_get(seen, url);
-        if (count == NULL || *count == RETRY_FLAG) {
+        // Fetch the page only if we've never visited it before or it has been mark as retry
+        if (!count || *count == RETRY_FLAG) {
             error = do_crawler(url, job_queue, seen);
-            failure += error;
-            total++;
-        } else if (*count == FAILURE_FLAG) {
-            log_info("Skipping %s\tMax Retry reached", url, 1);
         }
+//        else {
+//            log_info("Skipping %-40s\t", url);
+//        }
+        failure += error;
+        total++;
+
+        // Skip page that has been marked as failure
+
     }
     printf("Total Success: %d\nTotal Failure: %d\n", total - failure, failure);
 }
@@ -52,7 +63,7 @@ int do_crawler(sds url, sds_vec_t *job_queue, int_map_t *seen) {
             print_body(response);
             // Successful
             if (response->status_code / 100 == 2) {
-                add_url(request, response->body, job_queue, seen);
+                add_url(parse_result, response->body, job_queue, seen);
                 mark_visited(url, seen);
                 log_info("Fetching %-100s succeeded\t%d", url, response->status_code);
             }
@@ -63,7 +74,7 @@ int do_crawler(sds url, sds_vec_t *job_queue, int_map_t *seen) {
                 if (redirect_to != NULL) {
                     log_info("Fetching %-100s succeeded\t%d", url, response->status_code);
                     log_info("\t|- Redirect to %s", *redirect_to);
-                    add_to_queue(request->host, *redirect_to, seen, job_queue);
+                    add_absolute_to_queue(*redirect_to, seen, job_queue);
                 }
                 error = 1;
             }
@@ -91,10 +102,12 @@ int do_crawler(sds url, sds_vec_t *job_queue, int_map_t *seen) {
                 }
             } else {
                 mark_failure(url, seen);
+                log_info("Fetching %-100s failed\t\t%d\tMarked as failure", url, response->status_code);
                 error = 1;
             }
             free_response(response);
         }
+        parsed_url_free(parse_result);
         free_request(request);
         return error;
     }
@@ -138,32 +151,58 @@ int mark_retry(sds url, int_map_t *seen, sds_vec_t *job_queue) {
     return 0;
 }
 
-int add_to_queue(sds host, sds url, int_map_t *seen, sds_vec_t *job_queue) {
-    if (parse_url(url) == NULL) {
-        sds abs = relative_to_absolute(url, host);
-        if (abs) {
-            log_debug("\t|+ Relative to absolute %s -> %s", url, abs);
-        }
-        url = abs;
-    }
-
-    if (url) {
-        int *count = map_get(seen, url);
-        if (count == NULL || *count == RETRY_FLAG) {
-            log_debug("\t|+ %s added to the job queue", url);
-            return vec_insert(job_queue, 0, url);
-        }
-        return 1;
+/**
+ * Concate path and url then add it to job queue
+ * @param host
+ * @param path
+ * @param seen
+ * @param job_queue
+ * @return
+ */
+int add_relative_to_queue(sds host, sds path, int_map_t *seen, sds_vec_t *job_queue) {
+    sds valid_url = resolve_referencing(path, host);
+    if (valid_url) {
+        log_debug("\t|+ Relative to absolute %s -> %s", path, valid_url);
+        return add_to_queue(valid_url, seen, job_queue);
     }
 }
 
-sds relative_to_absolute(sds path, sds host) {
-    sds abs;
-    abs = sdscatprintf(sdsempty(), "http://%s/%s", host, path);
-    if (parse_url(abs)) {
-        return abs;
+int add_absolute_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
+    if (abs_url == NULL) {
+        return 1;
     }
-    return NULL;
+    return add_to_queue(abs_url, seen, job_queue);
+}
+
+/**
+ * Add an absolute url to job queue if it has't been fetched before or has been marked for retry
+ * @param abs_url
+ * @param seen
+ * @param job_queue
+ * @return
+ */
+int add_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
+    int *count = map_get(seen, abs_url);
+    if (count == NULL || *count == RETRY_FLAG) {
+        log_debug("\t|+ %s added to the job queue", abs_url);
+        return vec_push(job_queue, abs_url);
+    }
+    return -1;
+}
+
+/**
+ * Check if a url looks valid by attempting to parse it
+ * @param url
+ * @return 0 for doesn't look an url, 1 for looks like an url
+ */
+int is_valid_url(sds url) {
+    parsed_url_t *result = parse_url(url);
+    if (result == NULL) {
+        return 0;
+    } else {
+        free(result);
+        return 1;
+    }
 }
 
 int validate_content_length(Response *response) {
@@ -174,8 +213,44 @@ int validate_content_length(Response *response) {
         if (expected == actual) {
             return 0;
         } else {
-            log_error("\t|- truncated page: Expected length: %d\t actual length:%d", expected, actual);
+            log_warn("\t|- truncated page: Expected length: %d\t actual length:%d", expected, actual);
             return 1;
         }
     }
+}
+
+bool domain_validation(sds src, sds target) {
+    int src_count, target_count;
+    parsed_url_t *src_parsed = parse_url(src);
+    parsed_url_t *target_parsed = parse_url(target);
+
+    if (!src_parsed || !target_parsed) {
+        return false;
+    }
+
+    sds src_host = sdsnew(src_parsed->host);
+    sds target_host = sdsnew(target_parsed->host);
+
+    parsed_url_free(src_parsed);
+    parsed_url_free(target_parsed);
+
+    sds *src_token = sdssplitlen(sdstrim(src_host, " \n\r"), sdslen(src_host), ".", 1, &src_count);
+    sds *target_token = sdssplitlen(sdstrim(target_host, " \n\r"), sdslen(target_host), ".", 1, &target_count);
+    if (src_count != target_count) {
+        log_trace("Domain Validation failed: %s %s", src, target);
+        return false;
+    }
+    int index;
+    for (index = 1; index < src_count; index++) {
+        if (strcmp(src_token[index], target_token[index]) != 0) {
+            log_trace("Domain Validation failed: %s %s: %s %s mismatch at index %d", src, target, src_token[index],
+                      target_token[index], index);
+            return false;
+        }
+    }
+    return true;
+}
+
+sds add_scheme(sds url, sds header) {
+    return sdscatprintf("%s://%s", url, header);
 }

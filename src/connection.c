@@ -36,6 +36,9 @@ int create_connection(sds host, int portno, int *sockfd) {
         log_error("Failed to connect to socket: %d", *sockfd);
         return 1;
     }
+    if (set_timeout(*sockfd)) {
+        return 1;
+    }
 
     return 0;
 }
@@ -87,6 +90,27 @@ int receive_from_server(int sockfd, sds *buffer) {
         log_error("Fail to save response to buffer: BUFFER FULL");
         return 1;
     }
-    sdsRemoveFreeSpace(*buffer);
+//    sdsRemoveFreeSpace(*buffer);
+    return 0;
+}
+
+int set_timeout(int sockfd) {
+    struct timeval timeout;
+    timeout.tv_sec = 10;
+    timeout.tv_usec = 0;
+
+    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout,
+                   sizeof(timeout)) < 0) {
+        log_error("setsockopt failed\n");
+        return 1;
+
+    }
+
+    if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (char *) &timeout,
+                   sizeof(timeout)) < 0) {
+        log_error("setsockopt failed\n");
+        return 1;
+
+    }
     return 0;
 }

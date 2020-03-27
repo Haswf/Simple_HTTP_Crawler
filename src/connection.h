@@ -24,4 +24,6 @@ int close_connection(int sockfd);
 
 int receive_from_server(int sockfd, sds *buffer);
 
+int set_timeout(int socketfd);
+
 #endif //COMP30023_2020_PROJECT1_CONNECTION_H

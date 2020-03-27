@@ -24,9 +24,11 @@
 
 void print_url(Response *response);
 
-void add_url(Request *request, sds html, sds_vec_t *job_queue, int_map_t *seen);
+void add_url(parsed_url_t *url_parse, sds html, sds_vec_t *job_queue, int_map_t *seen);
 
 //void add_url(sds html, Request* request, sds_vec_t *job_queue, int_map_t *seen);
-void add_to_job_queue(sds host, GumboNode *node, sds_vec_t *job_queue, int_map_t *seen);
+void add_to_job_queue(parsed_url_t *url_parse, GumboNode *node, sds_vec_t *job_queue, int_map_t *seen);
+
+sds resolve_referencing(sds relative_path, sds base_url);
 
 #endif //COMP30023_2020_PROJECT1_PARSER_H

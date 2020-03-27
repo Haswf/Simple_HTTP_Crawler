@@ -32,7 +32,7 @@ _is_scheme_char(int c) {
 /*
  * See RFC 1738, 3986
  */
-parsed_url_t *parse_url(sds url) {
+parsed_url_t *parse_url(char *url) {
     const char *tmpstr;
     const char *curstr;
     int len;
@@ -53,8 +53,26 @@ parsed_url_t *parse_url(sds url) {
     purl->fragment = NULL;
     purl->username = NULL;
     purl->password = NULL;
-
     curstr = url;
+
+    /**
+     * Adaption to save original url to data structure.
+     * This is because in some case I need to access original url before parsing
+     *
+     * Haswell
+     */
+
+    purl->origin = NULL;
+    /* Copy the original url to the storage */
+    size_t total_len = strlen(url);
+    purl->origin = malloc(sizeof(char) * (total_len + 1));
+    if (NULL == purl->origin) {
+        parsed_url_free(purl);
+        return NULL;
+    }
+    (void) strncpy(purl->origin, curstr, total_len);
+    purl->origin[total_len] = '\0';
+
 
     /*
      * <scheme>:<scheme-specific-part>
@@ -286,8 +304,7 @@ parsed_url_t *parse_url(sds url) {
 /*
  * Free memory of parsed url
  */
-void
-parsed_url_free(struct parsed_url *purl) {
+void parsed_url_free(parsed_url_t *purl) {
     if (NULL != purl) {
         if (NULL != purl->scheme) {
             free(purl->scheme);
@@ -312,6 +329,9 @@ parsed_url_free(struct parsed_url *purl) {
         }
         if (NULL != purl->password) {
             free(purl->password);
+        }
+        if (NULL != purl->origin) {
+            free(purl->origin);
         }
         free(purl);
     }
