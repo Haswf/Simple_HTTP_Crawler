@@ -49,7 +49,7 @@ Response *parse_response(sds *buffer) {
             sds value = sdsnew(first_colon + 1);
 
             // Add header to map
-            map_set(response->header, name, sdsnew(sdstrim(value, " \n")));
+            map_set(response->header, lower(name), sdsnew(sdstrim(value, " \n")));
             sdsfree(name);
             sdsfree(value);
         }
@@ -84,4 +84,12 @@ void free_response(Response *response) {
     free(response);
 }
 
+sds lower(sds string) {
+//    printf("Before: %s\n", string);
+    for (int i = 0; i <= sdslen(string); i++) {
+        string[i] = (char) tolower(string[i]);
+    }
+//    printf("After: %s\n", string);
+    return string;
+}
 

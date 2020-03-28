@@ -39,7 +39,7 @@ void add_to_job_queue(parsed_url_t *url_parse, GumboNode *node, sds_vec_t *job_q
         if (!is_valid_url(url)) {
             url = resolve_referencing(url, url_parse->origin);
         }
-        if (url && domain_validation(url_parse->origin, url)) {
+        if (url && url_validation(url_parse->origin, url)) {
             add_absolute_to_queue(url, seen, job_queue);
         }
     }
@@ -49,7 +49,7 @@ void add_to_job_queue(parsed_url_t *url_parse, GumboNode *node, sds_vec_t *job_q
     }
 }
 
-void add_url(parsed_url_t *url_parse, sds html, sds_vec_t *job_queue, int_map_t *seen) {
+void search_and_add_url(parsed_url_t *url_parse, sds html, sds_vec_t *job_queue, int_map_t *seen) {
     GumboOutput *output = gumbo_parse(html);
     add_to_job_queue(url_parse, output->root, job_queue, seen);
     gumbo_destroy_output(&kGumboDefaultOptions, output);
@@ -64,8 +64,8 @@ sds resolve_referencing(sds relative_path, sds base_url) {
         return NULL;
     }
 
-    if (!strstr(relative_path, ".")) {
-        sdscatprintf(sdsempty(), "%s", relative_path);
+    if (!strstr(relative_path, ".") && !strstr(relative_path, "/")) {
+        relative_path = sdscatprintf(sdsempty(), "./%s", relative_path);
     }
 
     if (uriParseSingleUriA(&relative, relative_path, &errorPos) != URI_SUCCESS) {
@@ -97,3 +97,4 @@ sds resolve_referencing(sds relative_path, sds base_url) {
 
     return sdsnew(uriString);
 }
+

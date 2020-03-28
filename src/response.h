@@ -11,6 +11,7 @@
 #include <string.h>
 #include "connection.h"
 #include "collection.h"
+#include <ctype.h>
 
 typedef struct Response {
     sds version;
@@ -27,5 +28,7 @@ void print_header(Response *response);
 void print_body(Response *response);
 
 void free_response(Response *response);
+
+sds lower(sds string);
 
 #endif //COMP30023_2020_PROJECT1_RESPONSE_H

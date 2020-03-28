@@ -22,8 +22,6 @@ int mark_retry(sds url, int_map_t *seen, sds_vec_t *job_queue);
 
 int mark_failure(sds url, int_map_t *seen);
 
-sds relative_to_absolute(sds path, sds host);
-
 int validate_content_length(Response *response);
 
 int add_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue);
@@ -32,10 +30,12 @@ int add_relative_to_queue(sds host, sds path, int_map_t *seen, sds_vec_t *job_qu
 
 int add_absolute_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue);
 
-int is_valid_url(sds url);
+bool is_valid_url(sds url);
 
-bool domain_validation(sds src, sds target);
+bool url_validation(sds src, sds target);
 
 sds add_scheme(sds url, sds header);
+
+bool content_type_validation(Response *response);
 
 #endif //COMP30023_2020_PROJECT1_CRAWLER_H

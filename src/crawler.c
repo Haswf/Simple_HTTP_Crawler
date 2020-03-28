@@ -54,23 +54,26 @@ int do_crawler(sds url, sds_vec_t *job_queue, int_map_t *seen) {
 
         add_header(request, "Connection", CONNECTION);
         add_header(request, "User-Agent", USER_AGENT);
-        Response *response = send_http_request(request, PORT, &error);
+        add_header(request, "Accept", HTML_CONTENT_TYPE);
 
+        Response *response = send_http_request(request, PORT, &error);
+        int *count = map_get(seen, url);
 
         if (!error) {
             validate_content_length(response);
             process_header(response);
             print_body(response);
+
             // Successful
-            if (response->status_code / 100 == 2) {
-                add_url(parse_result, response->body, job_queue, seen);
+            if (response->status_code / 100 == 2 && content_type_validation(response)) {
+                search_and_add_url(parse_result, response->body, job_queue, seen);
                 mark_visited(url, seen);
                 log_info("Fetching %-100s succeeded\t%d", url, response->status_code);
             }
                 // Redirection
             else if (response->status_code / 100 == 3) {
                 mark_visited(url, seen);
-                sds *redirect_to = (sds *) map_get(response->header, "Location");
+                sds *redirect_to = (sds *) map_get(response->header, LOCATION);
                 if (redirect_to != NULL) {
                     log_info("Fetching %-100s succeeded\t%d", url, response->status_code);
                     log_info("\t|- Redirect to %s", *redirect_to);
@@ -85,12 +88,17 @@ int do_crawler(sds url, sds_vec_t *job_queue, int_map_t *seen) {
                 log_info("Fetching %-100s failed\t\t%d", url, response->status_code);
                 error = 1;
             }
+
                 // Server error
             else if (response->status_code / 100 == 5) {
                 if (response->status_code == SERVICE_UNAVAILABLE) {
-                    mark_retry(url, seen, job_queue);
-                    log_info("Fetching %-100s failed\t\t%d\tRetry scheduled", url, response->status_code);
-                    error = 1;
+                    if (*count == RETRY_FLAG) {
+                        log_info("Fetching %-100s failed\t\t%d\t No retry will be attempted", url,
+                                 response->status_code);
+                    } else {
+                        mark_retry(url, seen, job_queue);
+                        log_info("Fetching %-100s failed\t\t%d\tRetry scheduled", url, response->status_code);
+                    }
                 } else if (response->status_code == GATEWAY_TIMEOUT) {
                     mark_retry(url, seen, job_queue);
                     log_info("Fetching %-100s failed\t\t%d\tRetry scheduled", url, response->status_code);
@@ -195,18 +203,18 @@ int add_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
  * @param url
  * @return 0 for doesn't look an url, 1 for looks like an url
  */
-int is_valid_url(sds url) {
+bool is_valid_url(sds url) {
     parsed_url_t *result = parse_url(url);
     if (result == NULL) {
-        return 0;
+        return false;
     } else {
         free(result);
-        return 1;
+        return true;
     }
 }
 
 int validate_content_length(Response *response) {
-    sds *content_length = (sds *) map_get(response->header, "Content-Length");
+    sds *content_length = (sds *) map_get(response->header, CONTENT_LENGTH);
     if (content_length != NULL) {
         int actual = sdslen(response->body);
         int expected = atoi(*content_length);
@@ -219,7 +227,7 @@ int validate_content_length(Response *response) {
     }
 }
 
-bool domain_validation(sds src, sds target) {
+bool url_validation(sds src, sds target) {
     int src_count, target_count;
     parsed_url_t *src_parsed = parse_url(src);
     parsed_url_t *target_parsed = parse_url(target);
@@ -230,6 +238,10 @@ bool domain_validation(sds src, sds target) {
 
     sds src_host = sdsnew(src_parsed->host);
     sds target_host = sdsnew(target_parsed->host);
+
+    if (!strcmp(target_parsed->scheme, src_parsed->scheme)) {
+        return false;
+    }
 
     parsed_url_free(src_parsed);
     parsed_url_free(target_parsed);
@@ -248,9 +260,26 @@ bool domain_validation(sds src, sds target) {
             return false;
         }
     }
+    sdsfreesplitres(src_token, src_count);
+    sdsfreesplitres(target_token, target_count);
     return true;
 }
 
 sds add_scheme(sds url, sds header) {
     return sdscatprintf("%s://%s", url, header);
+}
+
+bool content_type_validation(Response *response) {
+    sds *type = (sds *) map_get(response->header, CONTENT_TYPE);
+    // if content type header is not presented
+    if (type == NULL) {
+        log_info("\t|- Content type validation failed: Content-Type is missing");
+        return false;
+    }
+    // if text/html is found in content-type header
+    if (strstr(*type, HTML_CONTENT_TYPE)) {
+        return true;
+    }
+    log_info("\t|- Content type validation failed: expected: %s actual: %s", HTML_CONTENT_TYPE, *type);
+    return false;
 }

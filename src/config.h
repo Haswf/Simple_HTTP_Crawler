@@ -6,7 +6,7 @@
 #define COMP30023_2020_PROJECT1_CONFIG_H
 
 #define PORT 80
-#define LOG_LEVEL LOG_INFO
+#define LOG_LEVEL LOG_DEBUG
 #define HEADER_BODY_SEPARATOR_SIZE 4
 #define HTTP_VERSION "HTTP/1.1"
 #define USER_AGENT "shuyangf"
@@ -20,4 +20,8 @@
 #define SERVICE_UNAVAILABLE 503
 #define GATEWAY_TIMEOUT 504
 
+#define CONTENT_TYPE "content-type"
+#define HTML_CONTENT_TYPE "text/html"
+#define CONTENT_LENGTH "content-length"
+#define LOCATION "location"
 #endif //COMP30023_2020_PROJECT1_CONFIG_H

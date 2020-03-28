@@ -27,17 +27,18 @@ Response *send_http_request(Request *request, int portno, int *error) {
     } else {
         sdsfree(reqString);
     }
-    sds buffer = sdsnewlen("", RESPONSE_BUFFER);
+    char *buffer = (char *) calloc(RESPONSE_BUFFER, sizeof(buffer));
+//    sds buffer = sdsnewlen("", RESPONSE_BUFFER);
     *error = receive_from_server(sockfd, &buffer);
     *error = close_connection(sockfd);
     // free response buffer if anything goes wrong
     if (*error != 0) {
-        sdsfree(buffer);
+        free(buffer);
         return NULL;
     } else {
         response = parse_response(&buffer);
-        print_header(response);
-        sdsfree(buffer);
+//        print_header(response);
+        free(buffer);
         return response;
     }
 }

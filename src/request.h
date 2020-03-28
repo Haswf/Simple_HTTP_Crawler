@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "collection.h"
+#include "config.h"
 
 typedef struct Request {
     sds method;

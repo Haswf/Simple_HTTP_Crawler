@@ -2,7 +2,6 @@
 // Created by Haswe on 3/20/2020.
 
 #include "request.h"
-#include "config.h"
 
 /**
  * Create a HTTP Request
@@ -15,7 +14,9 @@
  */
 Request *create_http_request(sds host, sds path, sds method, sds body) {
     Request *request = malloc(sizeof(Request));
-    assert(request != NULL);
+    if (!request) {
+        return NULL;
+    }
     request->method = method;
     request->path = path;
     request->version = sdsnew(HTTP_VERSION);
@@ -55,8 +56,7 @@ sds HTTPRequestToString(Request *req) {
  * @return
  */
 int add_header(Request *req, char *name, char *value) {
-    map_set(req->header, name, value);
-    return 0;
+    return map_set(req->header, name, value);
 }
 
 /**
@@ -65,16 +65,29 @@ int add_header(Request *req, char *name, char *value) {
  * @return
  */
 int free_request(Request *req) {
-    sdsfree(req->method);
-    req->method = NULL;
-    sdsfree(req->host);
-    req->host = NULL;
-    sdsfree(req->path);
-    req->path = NULL;
-    sdsfree(req->version);
-    req->version = NULL;
-    sdsfree(req->body);
-    req->body = NULL;
-    map_deinit(req->header);
+    if (req->method) {
+        sdsfree(req->method);
+        req->method = NULL;
+    }
+    if (req->host) {
+        sdsfree(req->host);
+        req->host = NULL;
+    }
+    if (req->path) {
+        sdsfree(req->path);
+        req->path = NULL;
+    }
+    if (req->version) {
+        sdsfree(req->version);
+        req->version = NULL;
+    }
+    if (req->body) {
+        sdsfree(req->body);
+        req->body = NULL;
+    }
+    if (req->header) {
+        map_deinit(req->header);
+        req->header = NULL;
+    }
     free(req);;
 }

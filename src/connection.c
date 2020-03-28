@@ -90,7 +90,7 @@ int receive_from_server(int sockfd, sds *buffer) {
         log_error("Fail to save response to buffer: BUFFER FULL");
         return 1;
     }
-//    sdsRemoveFreeSpace(*buffer);
+    sdsRemoveFreeSpace(*buffer);
     return 0;
 }
 
