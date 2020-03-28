@@ -38,4 +38,12 @@ sds add_scheme(sds url, sds header);
 
 bool content_type_validation(Response *response);
 
+int success_handler(parsed_url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen);
+
+int failure_handler(parsed_url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen);
+
+int redirection_handler(parsed_url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen);
+
+int retry_handler(parsed_url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen);
+
 #endif //COMP30023_2020_PROJECT1_CRAWLER_H

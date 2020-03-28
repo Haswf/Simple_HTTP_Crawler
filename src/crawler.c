@@ -4,6 +4,8 @@
 
 
 #include "crawler.h"
+
+
 int main(int agrc, char *argv[]) {
     int total = 0;
     int failure = 0;
@@ -57,7 +59,6 @@ int do_crawler(sds url, sds_vec_t *job_queue, int_map_t *seen) {
         add_header(request, "Accept", HTML_CONTENT_TYPE);
 
         Response *response = send_http_request(request, PORT, &error);
-        int *count = map_get(seen, url);
 
         if (!error) {
             validate_content_length(response);
@@ -65,53 +66,24 @@ int do_crawler(sds url, sds_vec_t *job_queue, int_map_t *seen) {
             print_body(response);
 
             // Successful
-            if (response->status_code / 100 == 2 && content_type_validation(response)) {
-                search_and_add_url(parse_result, response->body, job_queue, seen);
-                mark_visited(url, seen);
-                log_info("Fetching %-100s succeeded\t%d", url, response->status_code);
+            if (response->status_code / 100 == 2) {
+                error = success_handler(parse_result, response, job_queue, seen);
             }
                 // Redirection
             else if (response->status_code / 100 == 3) {
-                mark_visited(url, seen);
-                sds *redirect_to = (sds *) map_get(response->header, LOCATION);
-                if (redirect_to != NULL) {
-                    log_info("Fetching %-100s succeeded\t%d", url, response->status_code);
-                    log_info("\t|- Redirect to %s", *redirect_to);
-                    add_absolute_to_queue(*redirect_to, seen, job_queue);
-                }
-                error = 1;
-            }
-
-                // Client Error
-            else if (response->status_code / 100 == 4) {
-                mark_visited(url, seen);
-                log_info("Fetching %-100s failed\t\t%d", url, response->status_code);
-                error = 1;
+                error = redirection_handler(parse_result, response, job_queue, seen);
             }
 
                 // Server error
             else if (response->status_code / 100 == 5) {
-                if (response->status_code == SERVICE_UNAVAILABLE) {
-                    if (*count == RETRY_FLAG) {
-                        log_info("Fetching %-100s failed\t\t%d\t No retry will be attempted", url,
-                                 response->status_code);
-                    } else {
-                        mark_retry(url, seen, job_queue);
-                        log_info("Fetching %-100s failed\t\t%d\tRetry scheduled", url, response->status_code);
-                    }
-                } else if (response->status_code == GATEWAY_TIMEOUT) {
-                    mark_retry(url, seen, job_queue);
-                    log_info("Fetching %-100s failed\t\t%d\tRetry scheduled", url, response->status_code);
-                    error = 1;
+                if (response->status_code == SERVICE_UNAVAILABLE || response->status_code == GATEWAY_TIMEOUT) {
+                    error = retry_handler(parse_result, response, job_queue, seen);
                 } else {
-                    mark_failure(url, seen);
-                    log_info("Fetching %-100s failed\t\t%d\tMarked as failure", url, response->status_code);
-                    error = 1;
+                    error = failure_handler(parse_result, response, job_queue, seen);
                 }
+
             } else {
-                mark_failure(url, seen);
-                log_info("Fetching %-100s failed\t\t%d\tMarked as failure", url, response->status_code);
-                error = 1;
+                error = failure_handler(parse_result, response, job_queue, seen);
             }
             free_response(response);
         }
@@ -119,6 +91,54 @@ int do_crawler(sds url, sds_vec_t *job_queue, int_map_t *seen) {
         free_request(request);
         return error;
     }
+}
+
+int success_handler(parsed_url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
+    if (content_type_validation(response)) {
+        search_and_add_url(url, response->body, job_queue, seen);
+        mark_visited(url->origin, seen);
+        log_info("Fetching %-100s succeeded\t%d", url->origin, response->status_code);
+    }
+    return 0;
+}
+
+int redirection_handler(parsed_url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
+    mark_visited(url->origin, seen);
+    sds *redirect_to = (sds *) map_get(response->header, LOCATION);
+    if (redirect_to != NULL) {
+        log_info("Fetching %-100s succeeded\t%d", url->origin, response->status_code);
+        log_info("\t|- Redirect to %s", *redirect_to);
+        // TODO: check if redirected url follows rules in spec
+        add_absolute_to_queue(*redirect_to, seen, job_queue);
+    }
+    return 0;
+}
+
+int failure_handler(parsed_url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
+    mark_failure(url->origin, seen);
+    log_info("Fetching %-100s failed\t\t%d\tMarked as failure", url->origin, response->status_code);
+    return 1;
+}
+
+/**
+ *
+ * @param url
+ * @param response
+ * @param job_queue
+ * @param seen
+ * @return
+ */
+int retry_handler(parsed_url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
+    int *count = map_get(seen, url->origin);
+    // If a page has been fetched and failed
+    if (*count == RETRY_FLAG) {
+        log_info("Retrying %-100s failed\t\t%d\t No further retry will be attempted", url->origin,
+                 response->status_code);
+    } else {
+        mark_retry(url->origin, seen, job_queue);
+        log_info("Fetching %-100s failed\t\t%d\tRetry scheduled", url->origin, response->status_code);
+    }
+    return 1;
 }
 
 int process_header(Response *response) {
@@ -227,6 +247,12 @@ int validate_content_length(Response *response) {
     }
 }
 
+/**
+ * Validate if a url is valid.
+ * @param src
+ * @param target
+ * @return
+ */
 bool url_validation(sds src, sds target) {
     int src_count, target_count;
     parsed_url_t *src_parsed = parse_url(src);
