@@ -14,17 +14,30 @@
  */
 Request *create_http_request(sds host, sds path, sds method, sds body) {
     Request *request = malloc(sizeof(Request));
+    // Return NULL if malloc fails
     if (!request) {
         return NULL;
     }
+
+    // join host and path for url parsing
+    request->parsed_url = parse_url(sdscatprintf(sdsempty(), "http://%s%s", host, path));
+
+    if (!request->parsed_url) {
+        return NULL;
+    }
+
+    request->body = body;
+    request->host = host;
     request->method = method;
     request->path = path;
     request->version = sdsnew(HTTP_VERSION);
     sds_map_t *header = malloc(sizeof(*header));
     map_init(header);
     request->header = header;
-    request->body = body;
-    request->host = host;
+    if (!request->header) {
+        return NULL;
+    }
+
     add_header(request, "Host", host);
     return request;
 };

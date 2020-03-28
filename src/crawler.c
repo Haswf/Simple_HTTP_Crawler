@@ -69,7 +69,7 @@ int do_crawler(sds url, sds_vec_t *job_queue, int_map_t *seen) {
             if (response->status_code / 100 == 2) {
                 error = success_handler(parse_result, response, job_queue, seen);
             }
-                // Redirection
+            // Redirection
             else if (response->status_code / 100 == 3) {
                 error = redirection_handler(parse_result, response, job_queue, seen);
             }
@@ -105,7 +105,7 @@ int success_handler(parsed_url_t *url, Response *response, sds_vec_t *job_queue,
 int redirection_handler(parsed_url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
     mark_visited(url->origin, seen);
     sds *redirect_to = (sds *) map_get(response->header, LOCATION);
-    if (redirect_to != NULL) {
+    if (redirect_to != NULL && url_validation(url->origin, *redirect_to)) {
         log_info("Fetching %-100s succeeded\t%d", url->origin, response->status_code);
         log_info("\t|- Redirect to %s", *redirect_to);
         // TODO: check if redirected url follows rules in spec
