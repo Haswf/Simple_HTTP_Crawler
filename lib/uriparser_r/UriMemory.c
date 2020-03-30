@@ -1,5 +1,5 @@
 /*
- * uriparser - RFC 3986 URI parsing library
+ * uriparser_r - RFC 3986 URI parsing library
  *
  * Copyright (C) 2018, Weijia Song <songweijia@gmail.com>
  * Copyright (C) 2018, Sebastian Pipping <sebastian@pipping.org>

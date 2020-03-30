@@ -5,4 +5,4 @@ set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
 
 # Add executable target with source files listed in SOURCE_FILES variable
 FILE(GLOB_RECURSE SOURCE_FILE src/*.c lib/*.c)
-add_executable(crawler ${SOURCE_FILE} src/config.h)
+add_executable(crawler ${SOURCE_FILE} src/url.c src/url.h)

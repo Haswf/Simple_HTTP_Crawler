@@ -1,5 +1,5 @@
 /*
- * uriparser - RFC 3986 URI parsing library
+ * uriparser_r - RFC 3986 URI parsing library
  *
  * Copyright (C) 2007, Weijia Song <songweijia@gmail.com>
  * Copyright (C) 2007, Sebastian Pipping <sebastian@pipping.org>
@@ -37,14 +37,54 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef URI_NORMALIZE_BASE_H
-#define URI_NORMALIZE_BASE_H 1
+#ifndef URI_DOXYGEN
+
+# include "UriParseBase.h"
+
+#endif
 
 
-#include "UriBase.h"
+void uriWriteQuadToDoubleByte(const unsigned char *hexDigits, int digitCount, unsigned char *output) {
+    switch (digitCount) {
+        case 1:
+            /* 0x___? -> \x00 \x0? */
+            output[0] = 0;
+            output[1] = hexDigits[0];
+            break;
+
+        case 2:
+            /* 0x__?? -> \0xx \x?? */
+            output[0] = 0;
+            output[1] = 16 * hexDigits[0] + hexDigits[1];
+            break;
+
+        case 3:
+            /* 0x_??? -> \0x? \x?? */
+            output[0] = hexDigits[0];
+            output[1] = 16 * hexDigits[1] + hexDigits[2];
+            break;
+
+        case 4:
+            /* 0x???? -> \0?? \x?? */
+            output[0] = 16 * hexDigits[0] + hexDigits[1];
+            output[1] = 16 * hexDigits[2] + hexDigits[3];
+            break;
+
+    }
+}
 
 
-UriBool uriIsUnreserved(int code);
+unsigned char uriGetOctetValue(const unsigned char *digits, int digitCount) {
+    switch (digitCount) {
+        case 1:
+            return digits[0];
 
+        case 2:
+            return 10 * digits[0] + digits[1];
 
-#endif /* URI_NORMALIZE_BASE_H */
+        case 3:
+        default:
+            return 100 * digits[0] + 10 * digits[1] + digits[2];
+
+    }
+}

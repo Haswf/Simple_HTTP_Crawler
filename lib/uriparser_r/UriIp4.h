@@ -1,5 +1,5 @@
 /*
- * uriparser - RFC 3986 URI parsing library
+ * uriparser_r - RFC 3986 URI parsing library
  *
  * Copyright (C) 2007, Weijia Song <songweijia@gmail.com>
  * Copyright (C) 2007, Sebastian Pipping <sebastian@pipping.org>
@@ -38,42 +38,78 @@
  */
 
 /**
- * @file UriDefsAnsi.h
- * Holds definitions for the ANSI pass.
- * NOTE: This header is included N times, not once.
+ * @file UriIp4.h
+ * Holds the IPv4 parser interface.
+ * NOTE: This header includes itself twice.
  */
 
-/* Allow multi inclusion */
+#if (defined(URI_PASS_ANSI) && !defined(URI_IP4_TWICE_H_ANSI)) \
+ || (defined(URI_PASS_UNICODE) && !defined(URI_IP4_TWICE_H_UNICODE)) \
+ || (!defined(URI_PASS_ANSI) && !defined(URI_PASS_UNICODE))
+/* What encodings are enabled? */
 #include "UriDefsConfig.h"
 
+#if (!defined(URI_PASS_ANSI) && !defined(URI_PASS_UNICODE))
+/* Include SELF twice */
+# ifdef URI_ENABLE_ANSI
+#  define URI_PASS_ANSI 1
 
-#undef URI_CHAR
-#define URI_CHAR char
+#  include "UriIp4.h"
 
-#undef _UT
-#define _UT(x) x
+#  undef URI_PASS_ANSI
+# endif
+# ifdef URI_ENABLE_UNICODE
+#  define URI_PASS_UNICODE 1
+
+#  include "UriIp4.h"
+
+#  undef URI_PASS_UNICODE
+# endif
+/* Only one pass for each encoding */
+#elif (defined(URI_PASS_ANSI) && !defined(URI_IP4_TWICE_H_ANSI) \
+ && defined(URI_ENABLE_ANSI)) || (defined(URI_PASS_UNICODE) \
+ && !defined(URI_IP4_TWICE_H_UNICODE) && defined(URI_ENABLE_UNICODE))
+# ifdef URI_PASS_ANSI
+#  define URI_IP4_TWICE_H_ANSI 1
+#  include "UriDefsAnsi.h"
+# else
+#  define URI_IP4_TWICE_H_UNICODE 1
+#  include "UriDefsUnicode.h"
+#  include <wchar.h>
+# endif
 
 
-#undef URI_FUNC
-#define URI_FUNC(x) uri##x##A
 
-#undef URI_TYPE
-#define URI_TYPE(x) Uri##x##A
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
-#undef URI_STRLEN
-#define URI_STRLEN strlen
-#undef URI_STRCPY
-#define URI_STRCPY strcpy
-#undef URI_STRCMP
-#define URI_STRCMP strcmp
-#undef URI_STRNCMP
-#define URI_STRNCMP strncmp
 
-/* TODO Remove on next source-compatibility break */
-#undef URI_SNPRINTF
-#if (defined(__WIN32__) || defined(_WIN32) || defined(WIN32))
-# define URI_SNPRINTF _snprintf
-#else
-# define URI_SNPRINTF snprintf
+#ifndef URI_DOXYGEN
+# include "UriBase.h"
+#endif
+
+
+
+/**
+ * Converts a IPv4 text representation into four bytes.
+ *
+ * @param octetOutput  Output destination
+ * @param first        First character of IPv4 text to parse
+ * @param afterLast    Position to stop parsing at
+ * @return Error code or 0 on success
+ */
+URI_PUBLIC int URI_FUNC(ParseIpFourAddress)(unsigned char * octetOutput,
+        const URI_CHAR * first, const URI_CHAR * afterLast);
+
+
+
+#ifdef __cplusplus
+}
+#endif
+
+
+
+#endif
 #endif

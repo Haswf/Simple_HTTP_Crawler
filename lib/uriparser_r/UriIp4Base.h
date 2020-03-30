@@ -1,5 +1,5 @@
 /*
- * uriparser - RFC 3986 URI parsing library
+ * uriparser_r - RFC 3986 URI parsing library
  *
  * Copyright (C) 2007, Weijia Song <songweijia@gmail.com>
  * Copyright (C) 2007, Sebastian Pipping <sebastian@pipping.org>
@@ -37,58 +37,21 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/**
- * @file UriIp4Base.c
- * Holds code independent of the encoding pass.
- */
-
-#ifndef URI_DOXYGEN
-
-# include "UriIp4Base.h"
-
-#endif
+#ifndef URI_IP4_BASE_H
+#define URI_IP4_BASE_H 1
 
 
-void uriStackToOctet(UriIp4Parser *parser, unsigned char *octet) {
-    switch (parser->stackCount) {
-        case 1:
-            *octet = parser->stackOne;
-            break;
-
-        case 2:
-            *octet = parser->stackOne * 10
-                     + parser->stackTwo;
-            break;
-
-        case 3:
-            *octet = parser->stackOne * 100
-                     + parser->stackTwo * 10
-                     + parser->stackThree;
-            break;
-
-        default:;
-    }
-    parser->stackCount = 0;
-}
+typedef struct UriIp4ParserStruct {
+    unsigned char stackCount;
+    unsigned char stackOne;
+    unsigned char stackTwo;
+    unsigned char stackThree;
+} UriIp4Parser;
 
 
-void uriPushToStack(UriIp4Parser *parser, unsigned char digit) {
-    switch (parser->stackCount) {
-        case 0:
-            parser->stackOne = digit;
-            parser->stackCount = 1;
-            break;
+void uriPushToStack(UriIp4Parser *parser, unsigned char digit);
 
-        case 1:
-            parser->stackTwo = digit;
-            parser->stackCount = 2;
-            break;
+void uriStackToOctet(UriIp4Parser *parser, unsigned char *octet);
 
-        case 2:
-            parser->stackThree = digit;
-            parser->stackCount = 3;
-            break;
 
-        default:;
-    }
-}
+#endif /* URI_IP4_BASE_H */

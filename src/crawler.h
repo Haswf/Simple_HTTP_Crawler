@@ -6,7 +6,6 @@
 #define COMP30023_2020_PROJECT1_CRAWLER_H
 
 #include "HTTP.h"
-#include "../lib/url_parser/url_parser.h"
 #include "collection.h"
 #include "parser.h"
 #include "config.h"
@@ -38,12 +37,14 @@ sds add_scheme(sds url, sds header);
 
 bool content_type_validation(Response *response);
 
-int success_handler(parsed_url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen);
+int success_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen);
 
-int failure_handler(parsed_url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen);
+int failure_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen);
 
-int redirection_handler(parsed_url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen);
+int redirection_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen);
 
-int retry_handler(parsed_url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen);
+int retry_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen);
+
+sds build_key(sds url);
 
 #endif //COMP30023_2020_PROJECT1_CRAWLER_H

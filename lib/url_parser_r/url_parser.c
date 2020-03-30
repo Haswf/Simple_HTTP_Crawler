@@ -32,7 +32,7 @@ _is_scheme_char(int c) {
 /*
  * See RFC 1738, 3986
  */
-parsed_url_t *parse_url(char *url) {
+parsed_url_t *parse_url_r(char *url) {
     const char *tmpstr;
     const char *curstr;
     int len;

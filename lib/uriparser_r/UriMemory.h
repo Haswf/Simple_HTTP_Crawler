@@ -1,8 +1,8 @@
 /*
- * uriparser - RFC 3986 URI parsing library
+ * uriparser_r - RFC 3986 URI parsing library
  *
- * Copyright (C) 2007, Weijia Song <songweijia@gmail.com>
- * Copyright (C) 2007, Sebastian Pipping <sebastian@pipping.org>
+ * Copyright (C) 2018, Weijia Song <songweijia@gmail.com>
+ * Copyright (C) 2018, Sebastian Pipping <sebastian@pipping.org>
  * All rights reserved.
  *
  * Redistribution and use in source  and binary forms, with or without
@@ -37,21 +37,39 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef URI_IP4_BASE_H
-#define URI_IP4_BASE_H 1
+#ifndef URI_MEMORY_H
+#define URI_MEMORY_H 1
 
 
-typedef struct UriIp4ParserStruct {
-    unsigned char stackCount;
-    unsigned char stackOne;
-    unsigned char stackTwo;
-    unsigned char stackThree;
-} UriIp4Parser;
+#ifndef URI_DOXYGEN
+
+# include "Uri.h"
+
+#endif
 
 
-void uriPushToStack(UriIp4Parser *parser, unsigned char digit);
+#define URI_CHECK_MEMORY_MANAGER(memory)  \
+    do { \
+        if (memory == NULL) { \
+            memory = &defaultMemoryManager; \
+        } else if (uriMemoryManagerIsComplete(memory) != URI_TRUE) { \
+            return URI_ERROR_MEMORY_MANAGER_INCOMPLETE; \
+        } \
+    } while (0)
 
-void uriStackToOctet(UriIp4Parser *parser, unsigned char *octet);
+
+#ifdef __cplusplus
+# define URIPARSER_EXTERN extern "C"
+#else
+# define URIPARSER_EXTERN extern
+#endif
+
+URIPARSER_EXTERN UriMemoryManager defaultMemoryManager;
+
+#undef URIPARSER_EXTERN
 
 
-#endif /* URI_IP4_BASE_H */
+UriBool uriMemoryManagerIsComplete(const UriMemoryManager *memory);
+
+
+#endif /* URI_MEMORY_H */

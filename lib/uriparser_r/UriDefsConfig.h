@@ -1,5 +1,5 @@
 /*
- * uriparser - RFC 3986 URI parsing library
+ * uriparser_r - RFC 3986 URI parsing library
  *
  * Copyright (C) 2007, Weijia Song <songweijia@gmail.com>
  * Copyright (C) 2007, Sebastian Pipping <sebastian@pipping.org>
@@ -38,78 +38,63 @@
  */
 
 /**
- * @file UriIp4.h
- * Holds the IPv4 parser interface.
- * NOTE: This header includes itself twice.
+ * @file UriDefsConfig.h
+ * Adjusts the internal configuration after processing external definitions.
  */
 
-#if (defined(URI_PASS_ANSI) && !defined(URI_IP4_TWICE_H_ANSI)) \
- || (defined(URI_PASS_UNICODE) && !defined(URI_IP4_TWICE_H_UNICODE)) \
- || (!defined(URI_PASS_ANSI) && !defined(URI_PASS_UNICODE))
-/* What encodings are enabled? */
-#include "UriDefsConfig.h"
+#ifndef URI_DEFS_CONFIG_H
+#define URI_DEFS_CONFIG_H 1
 
-#if (!defined(URI_PASS_ANSI) && !defined(URI_PASS_UNICODE))
-/* Include SELF twice */
-# ifdef URI_ENABLE_ANSI
-#  define URI_PASS_ANSI 1
 
-#  include "UriIp4.h"
 
-#  undef URI_PASS_ANSI
-# endif
-# ifdef URI_ENABLE_UNICODE
-#  define URI_PASS_UNICODE 1
+/* Deny external overriding */
+#undef URI_ENABLE_ANSI      /* Internal for !URI_NO_ANSI */
+#undef URI_ENABLE_UNICODE   /* Internal for !URI_NO_UNICODE */
 
-#  include "UriIp4.h"
 
-#  undef URI_PASS_UNICODE
-# endif
-/* Only one pass for each encoding */
-#elif (defined(URI_PASS_ANSI) && !defined(URI_IP4_TWICE_H_ANSI) \
- && defined(URI_ENABLE_ANSI)) || (defined(URI_PASS_UNICODE) \
- && !defined(URI_IP4_TWICE_H_UNICODE) && defined(URI_ENABLE_UNICODE))
-# ifdef URI_PASS_ANSI
-#  define URI_IP4_TWICE_H_ANSI 1
-#  include "UriDefsAnsi.h"
+
+/* Encoding */
+#ifdef URI_NO_ANSI
+# ifdef URI_NO_UNICODE
+/* No encoding at all */
+#  error URI_NO_ANSI and URI_NO_UNICODE cannot go together.
 # else
-#  define URI_IP4_TWICE_H_UNICODE 1
-#  include "UriDefsUnicode.h"
-#  include <wchar.h>
+/* Unicode only */
+#  define URI_ENABLE_UNICODE  1
 # endif
-
-
-
-#ifdef __cplusplus
-extern "C" {
+#else
+# ifdef URI_NO_UNICODE
+/* ANSI only */
+#  define URI_ENABLE_ANSI     1
+# else
+/* Both ANSI and Unicode */
+#  define URI_ENABLE_ANSI     1
+#  define URI_ENABLE_UNICODE  1
+# endif
 #endif
 
 
 
-#ifndef URI_DOXYGEN
-# include "UriBase.h"
+/* Function inlining, not ANSI/ISO C! */
+#if defined(URI_DOXYGEN)
+# define URI_INLINE
+#elif defined(__INTEL_COMPILER)
+/* Intel C/C++ */
+/* http://predef.sourceforge.net/precomp.html#sec20 */
+/* http://www.intel.com/support/performancetools/c/windows/sb/CS-007751.htm#2 */
+# define URI_INLINE __force_inline
+#elif defined(_MSC_VER)
+/* Microsoft Visual C++ */
+/* http://predef.sourceforge.net/precomp.html#sec32 */
+/* http://msdn2.microsoft.com/en-us/library/ms882281.aspx */
+# define URI_INLINE __forceinline
+#elif (defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L))
+/* C99, "inline" is a keyword */
+# define URI_INLINE inline
+#else
+/* No inlining */
+# define URI_INLINE
 #endif
 
 
-
-/**
- * Converts a IPv4 text representation into four bytes.
- *
- * @param octetOutput  Output destination
- * @param first        First character of IPv4 text to parse
- * @param afterLast    Position to stop parsing at
- * @return Error code or 0 on success
- */
-URI_PUBLIC int URI_FUNC(ParseIpFourAddress)(unsigned char * octetOutput,
-        const URI_CHAR * first, const URI_CHAR * afterLast);
-
-
-
-#ifdef __cplusplus
-}
-#endif
-
-
-
-#endif
-#endif
+#endif /* URI_DEFS_CONFIG_H */

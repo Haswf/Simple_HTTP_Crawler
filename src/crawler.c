@@ -4,9 +4,14 @@
 
 
 #include "crawler.h"
-
+#include "url.h"
 
 int main(int agrc, char *argv[]) {
+
+    if (agrc < 1) {
+        printf("Usage: crawler [URL]");
+        exit(0);
+    }
     int total = 0;
     int failure = 0;
     log_set_level(LOG_LEVEL);
@@ -28,9 +33,11 @@ int main(int agrc, char *argv[]) {
     while (job_queue->length > 0) {
         int error = 0;
         sds url = vec_pop(job_queue);
-        int *count = map_get(seen, url);
+        sds key = build_key(url);
+        int *status = map_get(seen, key);
+        sdsfree(key);
         // Fetch the page only if we've never visited it before or it has been mark as retry
-        if (!count || *count == RETRY_FLAG) {
+        if (!status || *status == RETRY_FLAG) {
             error = do_crawler(url, job_queue, seen);
         }
 //        else {
@@ -48,12 +55,12 @@ int main(int agrc, char *argv[]) {
 
 int do_crawler(sds url, sds_vec_t *job_queue, int_map_t *seen) {
     int error = 0;
-    parsed_url_t *parse_result = parse_url(url);
+    url_t *parse_result = parse_url(url);
     if (parse_result != NULL) {
         // Set path to / if none is given
-        sds path = parse_result->path == NULL ? sdsnew("/") : sdscatfmt(sdsempty(), "/%s", parse_result->path);
-        Request *request = create_http_request(sdsnew(parse_result->host), path, sdsnew("GET"), sdsnew(""));
-
+        Request *request = create_http_request(sdsnew(parse_result->authority), sdsnew(parse_result->path),
+                                               sdsnew("GET"), sdsnew(""));
+        log_debug("Fetching %s", url);
         add_header(request, "Connection", CONNECTION);
         add_header(request, "User-Agent", USER_AGENT);
         add_header(request, "Accept", HTML_CONTENT_TYPE);
@@ -87,26 +94,26 @@ int do_crawler(sds url, sds_vec_t *job_queue, int_map_t *seen) {
             }
             free_response(response);
         }
-        parsed_url_free(parse_result);
+        free_url(parse_result);
         free_request(request);
         return error;
     }
 }
 
-int success_handler(parsed_url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
+int success_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
     if (content_type_validation(response)) {
+        mark_visited(url->raw, seen);
         search_and_add_url(url, response->body, job_queue, seen);
-        mark_visited(url->origin, seen);
-        log_info("Fetching %-100s succeeded\t%d", url->origin, response->status_code);
+        log_info("Fetching %-100s succeeded\t%d", url->raw, response->status_code);
     }
     return 0;
 }
 
-int redirection_handler(parsed_url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
-    mark_visited(url->origin, seen);
+int redirection_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
+    mark_visited(url->raw, seen);
     sds *redirect_to = (sds *) map_get(response->header, LOCATION);
-    if (redirect_to != NULL && url_validation(url->origin, *redirect_to)) {
-        log_info("Fetching %-100s succeeded\t%d", url->origin, response->status_code);
+    if (redirect_to != NULL && url_validation(url->raw, *redirect_to)) {
+        log_info("Fetching %-100s succeeded\t%d", url->raw, response->status_code);
         log_info("\t|- Redirect to %s", *redirect_to);
         // TODO: check if redirected url follows rules in spec
         add_absolute_to_queue(*redirect_to, seen, job_queue);
@@ -114,9 +121,9 @@ int redirection_handler(parsed_url_t *url, Response *response, sds_vec_t *job_qu
     return 0;
 }
 
-int failure_handler(parsed_url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
-    mark_failure(url->origin, seen);
-    log_info("Fetching %-100s failed\t\t%d\tMarked as failure", url->origin, response->status_code);
+int failure_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
+    mark_failure(url->raw, seen);
+    log_info("Fetching %-100s failed\t\t%d\tMarked as failure", url->raw, response->status_code);
     return 1;
 }
 
@@ -128,15 +135,18 @@ int failure_handler(parsed_url_t *url, Response *response, sds_vec_t *job_queue,
  * @param seen
  * @return
  */
-int retry_handler(parsed_url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
-    int *count = map_get(seen, url->origin);
+int retry_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
+    sds key = build_key(url->raw);
+    int *status = map_get(seen, key);
+    sdsfree(key);
+
     // If a page has been fetched and failed
-    if (*count == RETRY_FLAG) {
-        log_info("Retrying %-100s failed\t\t%d\t No further retry will be attempted", url->origin,
+    if (status && *status == RETRY_FLAG) {
+        log_info("Retrying %-100s failed\t\t%d\t No further retry will be attempted", url->raw,
                  response->status_code);
     } else {
-        mark_retry(url->origin, seen, job_queue);
-        log_info("Fetching %-100s failed\t\t%d\tRetry scheduled", url->origin, response->status_code);
+        mark_retry(url->raw, seen, job_queue);
+        log_info("Fetching %-100s failed\t\t%d\tRetry scheduled", url->raw, response->status_code);
     }
     return 1;
 }
@@ -152,8 +162,10 @@ int process_header(Response *response) {
  * @return
  */
 int mark_visited(sds url, int_map_t *seen) {
-    int *count = map_get(seen, url);
-    return map_set(seen, url, VISITED_FLAG);
+    sds key = build_key(url);
+    int result = map_set(seen, key, VISITED_FLAG);
+    sdsfree(key);
+    return result;
 }
 
 /**
@@ -163,7 +175,10 @@ int mark_visited(sds url, int_map_t *seen) {
  * @return
  */
 int mark_failure(sds url, int_map_t *seen) {
-    return map_set(seen, url, FAILURE_FLAG);
+    sds key = build_key(url);
+    int result = map_set(seen, key, FAILURE_FLAG);
+    sdsfree(key);
+    return result;
 }
 
 /**
@@ -177,22 +192,6 @@ int mark_retry(sds url, int_map_t *seen, sds_vec_t *job_queue) {
     map_set(seen, url, RETRY_FLAG);
     vec_push(job_queue, url);
     return 0;
-}
-
-/**
- * Concate path and url then add it to job queue
- * @param host
- * @param path
- * @param seen
- * @param job_queue
- * @return
- */
-int add_relative_to_queue(sds host, sds path, int_map_t *seen, sds_vec_t *job_queue) {
-    sds valid_url = resolve_referencing(path, host);
-    if (valid_url) {
-        log_debug("\t|+ Relative to absolute %s -> %s", path, valid_url);
-        return add_to_queue(valid_url, seen, job_queue);
-    }
 }
 
 int add_absolute_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
@@ -210,28 +209,16 @@ int add_absolute_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
  * @return
  */
 int add_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
-    int *count = map_get(seen, abs_url);
-    if (count == NULL || *count == RETRY_FLAG) {
+    sds key = build_key(abs_url);
+    int *status = map_get(seen, key);
+    sdsfree(key);
+    if (status == NULL || *status == RETRY_FLAG) {
         log_debug("\t|+ %s added to the job queue", abs_url);
         return vec_push(job_queue, abs_url);
     }
     return -1;
 }
 
-/**
- * Check if a url looks valid by attempting to parse it
- * @param url
- * @return 0 for doesn't look an url, 1 for looks like an url
- */
-bool is_valid_url(sds url) {
-    parsed_url_t *result = parse_url(url);
-    if (result == NULL) {
-        return false;
-    } else {
-        free(result);
-        return true;
-    }
-}
 
 int validate_content_length(Response *response) {
     sds *content_length = (sds *) map_get(response->header, CONTENT_LENGTH);
@@ -247,6 +234,15 @@ int validate_content_length(Response *response) {
     }
 }
 
+sds build_key(sds url) {
+    url_t *result = parse_url(url);
+    if (!result) {
+        return NULL;
+    }
+    return sdscatprintf(sdsempty(), "%s://%s%s", result->scheme, result->authority, result->path);
+//    return sdscatprintf(sdsempty(), "%s://%s/%s", result->scheme, result->authority, result->path);
+}
+
 /**
  * Validate if a url is valid.
  * @param src
@@ -255,22 +251,23 @@ int validate_content_length(Response *response) {
  */
 bool url_validation(sds src, sds target) {
     int src_count, target_count;
-    parsed_url_t *src_parsed = parse_url(src);
-    parsed_url_t *target_parsed = parse_url(target);
+    url_t *src_parsed = parse_url(src);
+    url_t *target_parsed = parse_url(target);
 
     if (!src_parsed || !target_parsed) {
         return false;
     }
 
-    sds src_host = sdsnew(src_parsed->host);
-    sds target_host = sdsnew(target_parsed->host);
+    sds src_host = sdsnew(src_parsed->authority);
+    sds target_host = sdsnew(target_parsed->authority);
 
-    if (!strcmp(target_parsed->scheme, src_parsed->scheme)) {
-        return false;
-    }
+    // TODO: Scheme validation is not working
+//    if (!strncmp(target_parsed->scheme, src_parsed->scheme, strlen(src_parsed->scheme))) {
+//        return false;
+//    }
 
-    parsed_url_free(src_parsed);
-    parsed_url_free(target_parsed);
+    free_url(src_parsed);
+    free_url(target_parsed);
 
     sds *src_token = sdssplitlen(sdstrim(src_host, " \n\r"), sdslen(src_host), ".", 1, &src_count);
     sds *target_token = sdssplitlen(sdstrim(target_host, " \n\r"), sdslen(target_host), ".", 1, &target_count);

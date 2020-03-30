@@ -1,5 +1,5 @@
 /*
- * uriparser - RFC 3986 URI parsing library
+ * uriparser_r - RFC 3986 URI parsing library
  *
  * Copyright (C) 2007, Weijia Song <songweijia@gmail.com>
  * Copyright (C) 2007, Sebastian Pipping <sebastian@pipping.org>
@@ -37,54 +37,58 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * @file UriIp4Base.c
+ * Holds code independent of the encoding pass.
+ */
+
 #ifndef URI_DOXYGEN
 
-# include "UriParseBase.h"
+# include "UriIp4Base.h"
 
 #endif
 
 
-void uriWriteQuadToDoubleByte(const unsigned char *hexDigits, int digitCount, unsigned char *output) {
-    switch (digitCount) {
+void uriStackToOctet(UriIp4Parser *parser, unsigned char *octet) {
+    switch (parser->stackCount) {
         case 1:
-            /* 0x___? -> \x00 \x0? */
-            output[0] = 0;
-            output[1] = hexDigits[0];
+            *octet = parser->stackOne;
             break;
 
         case 2:
-            /* 0x__?? -> \0xx \x?? */
-            output[0] = 0;
-            output[1] = 16 * hexDigits[0] + hexDigits[1];
+            *octet = parser->stackOne * 10
+                     + parser->stackTwo;
             break;
 
         case 3:
-            /* 0x_??? -> \0x? \x?? */
-            output[0] = hexDigits[0];
-            output[1] = 16 * hexDigits[1] + hexDigits[2];
+            *octet = parser->stackOne * 100
+                     + parser->stackTwo * 10
+                     + parser->stackThree;
             break;
 
-        case 4:
-            /* 0x???? -> \0?? \x?? */
-            output[0] = 16 * hexDigits[0] + hexDigits[1];
-            output[1] = 16 * hexDigits[2] + hexDigits[3];
-            break;
-
+        default:;
     }
+    parser->stackCount = 0;
 }
 
 
-unsigned char uriGetOctetValue(const unsigned char *digits, int digitCount) {
-    switch (digitCount) {
+void uriPushToStack(UriIp4Parser *parser, unsigned char digit) {
+    switch (parser->stackCount) {
+        case 0:
+            parser->stackOne = digit;
+            parser->stackCount = 1;
+            break;
+
         case 1:
-            return digits[0];
+            parser->stackTwo = digit;
+            parser->stackCount = 2;
+            break;
 
         case 2:
-            return 10 * digits[0] + digits[1];
+            parser->stackThree = digit;
+            parser->stackCount = 3;
+            break;
 
-        case 3:
-        default:
-            return 100 * digits[0] + 10 * digits[1] + digits[2];
-
+        default:;
     }
 }

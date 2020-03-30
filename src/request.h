@@ -10,13 +10,13 @@
 #include <assert.h>
 #include "collection.h"
 #include "config.h"
-#include "../lib/url_parser/url_parser.h"
+#include "url.h"
 
 typedef struct Request {
     sds method;
     sds host;
     sds path;
-    parsed_url_t *parsed_url;
+    url_t *parsed_url;
     sds version;
     sds body;
     sds_map_t *header;

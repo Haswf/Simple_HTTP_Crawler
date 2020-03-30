@@ -1,6 +1,6 @@
 /* 8cd64b75589a7efa22989ae85f71e620a99e3c44776338f7d3114eacf73d27a3 (0.9.3+)
  *
- * uriparser - RFC 3986 URI parsing library
+ * uriparser_r - RFC 3986 URI parsing library
  *
  * Copyright (C) 2007, Weijia Song <songweijia@gmail.com>
  * Copyright (C) 2007, Sebastian Pipping <sebastian@pipping.org>

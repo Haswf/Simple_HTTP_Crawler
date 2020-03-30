@@ -1,5 +1,5 @@
 /*
- * uriparser - RFC 3986 URI parsing library
+ * uriparser_r - RFC 3986 URI parsing library
  *
  * Copyright (C) 2007, Weijia Song <songweijia@gmail.com>
  * Copyright (C) 2007, Sebastian Pipping <sebastian@pipping.org>
@@ -38,8 +38,8 @@
  */
 
 /**
- * @file UriDefsUnicode.h
- * Holds definitions for the Unicode pass.
+ * @file UriDefsAnsi.h
+ * Holds definitions for the ANSI pass.
  * NOTE: This header is included N times, not once.
  */
 
@@ -48,32 +48,32 @@
 
 
 #undef URI_CHAR
-#define URI_CHAR wchar_t
+#define URI_CHAR char
 
 #undef _UT
-#define _UT(x) L##x
+#define _UT(x) x
 
 
 #undef URI_FUNC
-#define URI_FUNC(x) uri##x##W
+#define URI_FUNC(x) uri##x##A
 
 #undef URI_TYPE
-#define URI_TYPE(x) Uri##x##W
+#define URI_TYPE(x) Uri##x##A
 
 
 #undef URI_STRLEN
-#define URI_STRLEN wcslen
+#define URI_STRLEN strlen
 #undef URI_STRCPY
-#define URI_STRCPY wcscpy
+#define URI_STRCPY strcpy
 #undef URI_STRCMP
-#define URI_STRCMP wcscmp
+#define URI_STRCMP strcmp
 #undef URI_STRNCMP
-#define URI_STRNCMP wcsncmp
+#define URI_STRNCMP strncmp
 
 /* TODO Remove on next source-compatibility break */
 #undef URI_SNPRINTF
 #if (defined(__WIN32__) || defined(_WIN32) || defined(WIN32))
-# define URI_SNPRINTF _snwprintf
+# define URI_SNPRINTF _snprintf
 #else
-# define URI_SNPRINTF swprintf
+# define URI_SNPRINTF snprintf
 #endif
