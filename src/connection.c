@@ -3,20 +3,19 @@
 //
 
 #include "connection.h"
-
-
-#define RESPONSE_BUFFER 100001
+#include "HTTP.h"
+#include "crawler.h"
 
 int create_connection(sds host, int portno, int *sockfd) {
     struct hostent *server;
     struct sockaddr_in serv_addr;
-    int bytes, sent, received, total, message_size;
     /* lookup the ip address */
     server = gethostbyname(host);
     if (server == NULL) {
         log_error("Failed to find host: %s", host);
         return 1;
     }
+
     /* create the socket */
     *sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -71,6 +70,9 @@ int close_connection(int sockfd) {
 int receive_from_server(int sockfd, sds *buffer) {
     int total, received, bytes;
 
+    char *header_pos = NULL;
+    sds_map_t *header_map;
+
     /* receive the response */
     total = RESPONSE_BUFFER - 1;
     received = 0;
@@ -84,6 +86,14 @@ int receive_from_server(int sockfd, sds *buffer) {
         if (bytes == 0)
             break;
         received += bytes;
+        // If we find header for the first time
+        if (locate_header(*buffer) && !header_pos) {
+            header_pos = locate_header(*buffer);
+            header_map = extract_header(*buffer);
+            if (!isBufferSufficient(header_map) || !isHTML(header_map)) {
+                return 1;
+            };
+        }
     }
 
     if (received == total) {
@@ -101,14 +111,14 @@ int set_timeout(int sockfd) {
 
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout,
                    sizeof(timeout)) < 0) {
-        log_error("setsockopt failed\n");
+        log_error("setsockopt failed");
         return 1;
 
     }
 
     if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (char *) &timeout,
                    sizeof(timeout)) < 0) {
-        log_error("setsockopt failed\n");
+        log_error("setsockopt failed");
         return 1;
 
     }

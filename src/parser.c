@@ -38,8 +38,8 @@ void add_to_job_queue(url_t *url_parse, GumboNode *node, sds_vec_t *job_queue, i
         sds url = sdsnew(href->value);
         if (!is_valid_url(url)) {
             url_t *resolved = resolve_reference(url, url_parse->raw);
-            url = sdsnew(recomposition(resolved));
-//            free_url(resolved);
+            url = resolved->raw;
+            free_url(resolved);
         }
         if (is_valid_url(url) && url_validation(url_parse->raw, url)) {
             add_absolute_to_queue(url, seen, job_queue);
@@ -55,8 +55,4 @@ void search_and_add_url(url_t *url_parse, sds html, sds_vec_t *job_queue, int_ma
     GumboOutput *output = gumbo_parse(html);
     add_to_job_queue(url_parse, output->root, job_queue, seen);
     gumbo_destroy_output(&kGumboDefaultOptions, output);
-}
-
-sds resolve_referencing(sds relative_path, sds base_url) {
-
 }

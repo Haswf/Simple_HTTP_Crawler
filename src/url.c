@@ -62,7 +62,13 @@ sds remove_dot_segment(sds input) {
         if (strstr(input, key = "/../") == input || strstr(input, key = "/..") == input) {
             sdsrange(input, strlen(key), sdslen(input));
             input = sdscatprintf(sdsempty(), "/%s", input);
-            sdsrange(output, 0, sdslen(output) - strlen(strrchr(output, '/')) - 1);
+            char *preceding_slash = strrchr(output, '/');
+            // If the right most slash is at the start, i.e. output buffer only has one path segment
+            if (preceding_slash == output) {
+                sdsclear(output);
+            } else {
+                sdsrange(output, 0, sdslen(output) - strlen(preceding_slash) - 1);
+            }
             continue;
         }
 
@@ -92,7 +98,7 @@ sds remove_dot_segment(sds input) {
         int copy_size = 0;
         // Move the path between these two slashes
         if (slash_pos) {
-            copy_size = sdslen(input) - strlen(slash_pos);
+            copy_size = (int) sdslen(input) - (int) strlen(slash_pos);
         }
             // Move the characters up to the end of the input buffer.
         else {
@@ -179,7 +185,7 @@ url_t *parse_url(sds text) {
         parsed->authority = copy;
     }
 
-    if (matchptr[PATH_INDEX].rm_so != -1) {
+    if (matchptr[PATH_INDEX].rm_so != -1 && matchptr[PATH_INDEX].rm_so != matchptr[PATH_INDEX].rm_eo) {
         sds copy = sdsnew(text);
         sdsrange(copy, matchptr[PATH_INDEX].rm_so, matchptr[PATH_INDEX].rm_eo - 1);
         parsed->path = copy;
@@ -314,6 +320,7 @@ url_t *resolve_reference(sds reference, sds base) {
         target->scheme = base_parsed->scheme;
     }
     target->fragment = reference_parsed->fragment;
+    target->raw = recomposition(target);
     return target;
 }
 

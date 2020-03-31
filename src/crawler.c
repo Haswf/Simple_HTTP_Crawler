@@ -22,13 +22,12 @@ int main(int agrc, char *argv[]) {
     sds_vec_t *job_queue = malloc(sizeof(*job_queue));
     vec_init(job_queue);
 
-    sds initial = sdsnew(argv[1]);
+//    sds initial = sdsnew(argv[1]);
 
-    if (!is_valid_url(initial)) {
-        initial = add_scheme(initial, "http");
-    }
+//    add_absolute_to_queue(initial, seen, job_queue);
+    add_absolute_to_queue("http://www.w3.org/", seen, job_queue);
+    add_absolute_to_queue("http://www.w3.org/", seen, job_queue);
 
-    add_absolute_to_queue(initial, seen, job_queue);
 
     while (job_queue->length > 0) {
         int error = 0;
@@ -40,13 +39,10 @@ int main(int agrc, char *argv[]) {
         if (!status || *status == RETRY_FLAG) {
             error = do_crawler(url, job_queue, seen);
         }
-//        else {
-//            log_info("Skipping %-40s\t", url);
-//        }
+
         failure += error;
         total++;
 
-        // Skip page that has been marked as failure
 
     }
     printf("Total Success: %d\nTotal Failure: %d\n", total - failure, failure);
@@ -55,12 +51,19 @@ int main(int agrc, char *argv[]) {
 
 int do_crawler(sds url, sds_vec_t *job_queue, int_map_t *seen) {
     int error = 0;
-    url_t *parse_result = parse_url(url);
-    if (parse_result != NULL) {
+    if (is_valid_url(url)) {
+        url_t *parse_result = parse_url(url);
+        // If given url doesn't contain any path, concate / as default path
+        if (!parse_result->path) {
+            url = sdscat(url, "/");
+            free_url(parse_result);
+            // Reparse the url
+            parse_result = parse_url(url);
+        }
         // Set path to / if none is given
+        log_info("Fetching: %s", url);
         Request *request = create_http_request(sdsnew(parse_result->authority), sdsnew(parse_result->path),
                                                sdsnew("GET"), sdsnew(""));
-        log_debug("Fetching %s", url);
         add_header(request, "Connection", CONNECTION);
         add_header(request, "User-Agent", USER_AGENT);
         add_header(request, "Accept", HTML_CONTENT_TYPE);
@@ -96,34 +99,93 @@ int do_crawler(sds url, sds_vec_t *job_queue, int_map_t *seen) {
         }
         free_url(parse_result);
         free_request(request);
-        return error;
+    } else {
+        log_error("Invalid URL - Missing scheme or host");
+        error = 1;
     }
+    return error;
 }
 
 int success_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
-    if (content_type_validation(response)) {
-        mark_visited(url->raw, seen);
+    if (content_type_validation(response->header)) {
+        sds key = build_key(url->raw);
+        mark_visited(key, seen);
+        sdsfree(key);
+
+        sds alternative_path = getContentLocation(response->header);
+        if (alternative_path) {
+            url_t *resolved = resolve_reference(alternative_path, url->raw);
+            key = build_key(resolved->raw);
+            mark_visited(resolved->raw, seen);
+            sdsfree(key);
+
+            free_url(resolved);
+        }
         search_and_add_url(url, response->body, job_queue, seen);
-        log_info("Fetching %-100s succeeded\t%d", url->raw, response->status_code);
+        log_info("\t|- succeeded\t%d", response->status_code);
     }
     return 0;
 }
 
 int redirection_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
-    mark_visited(url->raw, seen);
-    sds *redirect_to = (sds *) map_get(response->header, LOCATION);
-    if (redirect_to != NULL && url_validation(url->raw, *redirect_to)) {
-        log_info("Fetching %-100s succeeded\t%d", url->raw, response->status_code);
-        log_info("\t|- Redirect to %s", *redirect_to);
+    sds key = build_key(url->raw);
+    mark_visited(key, seen);
+    sdsfree(key);
+
+    sds redirect_to = getLocation(response->header);
+    if (redirect_to != NULL && url_validation(url->raw, redirect_to)) {
+        log_info("\t|- succeeded\t%d", response->status_code);
+        log_info("\t|- Redirect to %s", redirect_to);
         // TODO: check if redirected url follows rules in spec
-        add_absolute_to_queue(*redirect_to, seen, job_queue);
+        add_absolute_to_queue(redirect_to, seen, job_queue);
     }
     return 0;
 }
 
-int failure_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
-    mark_failure(url->raw, seen);
-    log_info("Fetching %-100s failed\t\t%d\tMarked as failure", url->raw, response->status_code);
+sds getLocation(sds_map_t *header_map) {
+    sds *redirect_to = (sds *) map_get(header_map, LOCATION);
+    if (redirect_to) {
+        return *redirect_to;
+    } else {
+        return NULL;
+    }
+}
+
+
+sds getContentLocation(sds_map_t *header_map) {
+    sds *redirect_to = (sds *) map_get(header_map, CONTENT_LOCATION);
+    if (redirect_to) {
+        return *redirect_to;
+    } else {
+        return NULL;
+    }
+}
+
+sds getContentLength(sds_map_t *header_map) {
+    sds *content_length = (sds *) map_get(header_map, CONTENT_LENGTH);
+    if (content_length) {
+        return *content_length;
+    } else {
+        return NULL;
+    }
+}
+
+sds getContentType(sds_map_t *header_map) {
+    sds *type = (sds *) map_get(header_map, CONTENT_TYPE);
+    if (type) {
+        return *type;
+    } else {
+        return NULL;
+    }
+}
+
+
+int failure_handler(url_t *url, Response *response, int_map_t *seen) {
+    sds key = build_key(url->raw);
+    mark_failure(key, seen);
+    sdsfree(key);
+
+    log_info("\t|- failed\t\t%d\tMarked as failure", response->status_code);
     return 1;
 }
 
@@ -142,11 +204,11 @@ int retry_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_
 
     // If a page has been fetched and failed
     if (status && *status == RETRY_FLAG) {
-        log_info("Retrying %-100s failed\t\t%d\t No further retry will be attempted", url->raw,
+        log_info("\t|- Retry failed\t\t%d\t No further retry will be attempted",
                  response->status_code);
     } else {
         mark_retry(url->raw, seen, job_queue);
-        log_info("Fetching %-100s failed\t\t%d\tRetry scheduled", url->raw, response->status_code);
+        log_info("\t|- failed\t\t%d\tRetry scheduled", response->status_code);
     }
     return 1;
 }
@@ -209,6 +271,7 @@ int add_absolute_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
  * @return
  */
 int add_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
+
     sds key = build_key(abs_url);
     int *status = map_get(seen, key);
     sdsfree(key);
@@ -221,14 +284,15 @@ int add_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
 
 
 int validate_content_length(Response *response) {
-    sds *content_length = (sds *) map_get(response->header, CONTENT_LENGTH);
+    sds content_length = getContentLength(response->header);
     if (content_length != NULL) {
         int actual = sdslen(response->body);
-        int expected = atoi(*content_length);
+        char *ptr = NULL;
+        int expected = (int) strtol(content_length, &ptr, 0);
         if (expected == actual) {
             return 0;
         } else {
-            log_warn("\t|- truncated page: Expected length: %d\t actual length:%d", expected, actual);
+            log_info("\t|- truncated page: Expected length: %d\t actual length:%d", expected, actual);
             return 1;
         }
     }
@@ -240,7 +304,6 @@ sds build_key(sds url) {
         return NULL;
     }
     return sdscatprintf(sdsempty(), "%s://%s%s", result->scheme, result->authority, result->path);
-//    return sdscatprintf(sdsempty(), "%s://%s/%s", result->scheme, result->authority, result->path);
 }
 
 /**
@@ -288,21 +351,17 @@ bool url_validation(sds src, sds target) {
     return true;
 }
 
-sds add_scheme(sds url, sds header) {
-    return sdscatprintf("%s://%s", url, header);
-}
-
-bool content_type_validation(Response *response) {
-    sds *type = (sds *) map_get(response->header, CONTENT_TYPE);
+bool content_type_validation(sds_map_t *header_map) {
+    sds type = getContentType(header_map);
     // if content type header is not presented
     if (type == NULL) {
         log_info("\t|- Content type validation failed: Content-Type is missing");
         return false;
     }
     // if text/html is found in content-type header
-    if (strstr(*type, HTML_CONTENT_TYPE)) {
+    if (strstr(type, HTML_CONTENT_TYPE)) {
         return true;
     }
-    log_info("\t|- Content type validation failed: expected: %s actual: %s", HTML_CONTENT_TYPE, *type);
+    log_info("\t|- Content type validation failed: expected: %s actual: %s", HTML_CONTENT_TYPE, type);
     return false;
 }

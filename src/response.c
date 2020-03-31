@@ -4,17 +4,18 @@
 
 #include "response.h"
 #include "config.h"
+#include "HTTP.h"
 
 
 Response *parse_response(sds *buffer) {
     sds message = *buffer;
     Response *response = (Response *) malloc(sizeof(*response));
     // separator between response header and body
-    sds header_body_separator = "\r\n\r\n";
+    char *header_body_separator = "\r\n\r\n";
 
     char *where_body_is = strstr(message, header_body_separator);
-    int header_size = strlen(message) - strlen(where_body_is);
-    int body_size = strlen(message) - header_size - HEADER_BODY_SEPARATOR_SIZE;
+    int header_size = (int) strlen(message) - (int) strlen(where_body_is);
+    int body_size = (int) strlen(message) - header_size - HEADER_BODY_SEPARATOR_SIZE;
 
     // Initialise a map to store name-value pair
     sds_map_t *map = malloc(sizeof(*map));
@@ -27,8 +28,8 @@ Response *parse_response(sds *buffer) {
     // Copy body from response buffer
     response->body = sdscpylen(sdsempty(), where_body_is + HEADER_BODY_SEPARATOR_SIZE, body_size);
 
-    sds *status_line, *split;
-    int header_count, field_count, split_count;
+    sds *status_line;
+    int header_count, field_count;
 
     // Tokenize header into lines
     sds *lines = sdssplitlen(header, sdslen(header), "\r\n", 2, &header_count);
@@ -39,7 +40,7 @@ Response *parse_response(sds *buffer) {
             status_line = sdssplitlen(lines[j], sdslen(lines[j]), " ", 1, &field_count);
             response->version = sdsnew(status_line[0]);
             // convert status code to int
-            response->status_code = atoi(status_line[1]);
+            parse_int(status_line[1], &(response->status_code));
             response->reason_phrase = sdsnew(status_line[2]);
             sdsfreesplitres(status_line, field_count);
         } else {

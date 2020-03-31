@@ -13,7 +13,7 @@
 #define CONNECTION "close"
 #define RESPONSE_BUFFER 100001
 
-#define FAILURE_FLAG -1
+#define FAILURE_FLAG (-1)
 #define RETRY_FLAG 0
 #define VISITED_FLAG 1
 
@@ -23,5 +23,7 @@
 #define CONTENT_TYPE "content-type"
 #define HTML_CONTENT_TYPE "text/html"
 #define CONTENT_LENGTH "content-length"
+#define CONTENT_LOCATION "content-location"
+
 #define LOCATION "location"
 #endif //COMP30023_2020_PROJECT1_CONFIG_H

@@ -35,16 +35,24 @@ bool url_validation(sds src, sds target);
 
 sds add_scheme(sds url, sds header);
 
-bool content_type_validation(Response *response);
+bool content_type_validation(sds_map_t *header_map);
 
 int success_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen);
 
-int failure_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen);
+int failure_handler(url_t *url, Response *response, int_map_t *seen);
 
 int redirection_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen);
 
 int retry_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen);
 
 sds build_key(sds url);
+
+sds getLocation(sds_map_t *header_map);
+
+sds getContentLocation(sds_map_t *header_map);
+
+sds getContentLength(sds_map_t *header_map);
+
+sds getContentType(sds_map_t *header_map);
 
 #endif //COMP30023_2020_PROJECT1_CRAWLER_H
