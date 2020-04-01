@@ -22,10 +22,10 @@ int main(int agrc, char *argv[]) {
     sds_vec_t *job_queue = malloc(sizeof(*job_queue));
     vec_init(job_queue);
 
-    sds initial = sdsnew(argv[1]);
-
-    add_absolute_to_queue(initial, seen, job_queue);
-
+//    sds initial = sdsnew();
+    add_absolute_to_queue(argv[1], seen, job_queue);
+//    vec_push(job_queue, );
+//    sdsfree(initial);
 
     while (job_queue->length > 0) {
         int error = 0;
@@ -43,6 +43,11 @@ int main(int agrc, char *argv[]) {
 
 
     }
+    map_deinit(seen);
+    free(seen);
+    vec_init(job_queue);
+    free(job_queue);
+
     printf("Total Success: %d\nTotal Failure: %d\n", total - failure, failure);
 }
 
@@ -285,8 +290,7 @@ int validate_content_length(Response *response) {
     sds content_length = getContentLength(response->header);
     if (content_length != NULL) {
         int actual = sdslen(response->body);
-        char *ptr = NULL;
-        int expected = (int) strtol(content_length, &ptr, 0);
+        int expected = (int) atoi(content_length);
         if (expected == actual) {
             return 0;
         } else {
@@ -299,9 +303,11 @@ int validate_content_length(Response *response) {
 sds build_key(sds url) {
     url_t *result = parse_url(url);
     if (!result) {
-        return NULL;
+        return sdscatprintf(sdsempty(), "%s://%s%s", result->scheme, result->authority, result->path);
     }
-    return sdscatprintf(sdsempty(), "%s://%s%s", result->scheme, result->authority, result->path);
+    sds key = sdscatprintf(sdsempty(), "%s://%s%s", result->scheme, result->authority, result->path);
+    free_url(result);
+    return key;
 }
 
 /**

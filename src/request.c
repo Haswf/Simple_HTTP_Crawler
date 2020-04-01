@@ -20,7 +20,9 @@ Request *create_http_request(sds host, sds path, sds method, sds body) {
     }
 
     // join host and path for url parsing
-    request->parsed_url = parse_url(sdscatprintf(sdsempty(), "http://%s%s", host, path));
+    sds join = sdscatprintf(sdsempty(), "http://%s%s", host, path);
+    request->parsed_url = parse_url(join);
+    sdsfree(join);
 
     if (!request->parsed_url) {
         return NULL;
@@ -49,11 +51,11 @@ Request *create_http_request(sds host, sds path, sds method, sds body) {
  */
 sds HTTPRequestToString(Request *req) {
     sds reqString = sdsempty();
-    reqString = sdscat(reqString, sdscatprintf(sdsempty(), "%s %s %s\r\n", req->method, req->path, req->version));
+    reqString = sdscatprintf(reqString, "%s %s %s\r\n", req->method, req->path, req->version);
     const char *key;
     map_iter_t iter = map_iter(response->header);
     while ((key = map_next(req->header, &iter))) {
-        reqString = sdscat(reqString, sdscatprintf(sdsempty(), "%s: %s\r\n", key, *map_get(req->header, key)));
+        reqString = sdscatprintf(reqString, "%s: %s\r\n", key, *map_get(req->header, key));
     }
     reqString = sdscat(reqString, "\r\n");
     reqString = sdscat(reqString, req->body);
@@ -100,6 +102,11 @@ int free_request(Request *req) {
     }
     if (req->header) {
         map_deinit(req->header);
+        free(req->header);
+        req->header = NULL;
+    }
+    if (req->parsed_url) {
+        free_url(req->parsed_url);
         req->header = NULL;
     }
     free(req);;

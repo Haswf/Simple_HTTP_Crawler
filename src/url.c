@@ -252,6 +252,7 @@ bool is_valid_url(sds url) {
             printf("Ran out of memory.\n");
         }
     }
+    regfree(&compiled);
 
     if (matchptr[SCHEME_INDEX].rm_so == -1 && matchptr[AUTHORITY_INDEX].rm_so == -1) {
         return false;

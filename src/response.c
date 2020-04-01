@@ -48,14 +48,16 @@ Response *parse_response(sds *buffer) {
             char *first_colon = strstr(lines[j], ":");
             sds name = sdscpylen(sdsempty(), lines[j], strlen(lines[j]) - strlen(first_colon));
             sds value = sdsnew(first_colon + 1);
+            value = sdstrim(value, " \n");
 
             // Add header to map
-            map_set(response->header, lower(name), sdsnew(sdstrim(value, " \n")));
+            map_set(response->header, lower(name), value);
             sdsfree(name);
             sdsfree(value);
         }
     }
     sdsfreesplitres(lines, header_count);
+    sdsfree(header);
     return response;
 }
 
@@ -81,6 +83,7 @@ void free_response(Response *response) {
     sdsfree(response->body);
     response->body = NULL;
     map_deinit(response->header);
+    free(response->header);
     response->header = NULL;
     free(response);
 }

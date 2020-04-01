@@ -101,6 +101,8 @@ int receive_from_server(int sockfd, sds *buffer) {
         return 1;
     }
 //    sdsRemoveFreeSpace(*buffer);
+    map_deinit(header_map);
+    free(header_map);
     return 0;
 }
 

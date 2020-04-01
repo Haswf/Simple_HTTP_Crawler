@@ -24,11 +24,9 @@ Response *send_http_request(Request *request, int portno, int *error) {
     sds reqString = HTTPRequestToString(request);
     log_trace("\n---- HTTP Request -----\n%s--------------------------", reqString);
     *error = send_to_server(sockfd, reqString);
+    sdsfree(reqString);
     if (*error != 0) {
-        sdsfree(reqString);
         return NULL;
-    } else {
-        sdsfree(reqString);
     }
     char *buffer = (char *) calloc(RESPONSE_BUFFER, sizeof(buffer));
 //    sds buffer = sdsnewlen("", RESPONSE_BUFFER);
@@ -94,12 +92,13 @@ sds_map_t *extract_header(char *buffer) {
             sds value = sdsnew(first_colon + 1);
 
             // Add header to map
-            map_set(map, lower(name), sdsnew(sdstrim(value, " \n")));
+            map_set(map, lower(name), sdstrim(value, " \n"));
             sdsfree(name);
             sdsfree(value);
         }
     }
     sdsfreesplitres(lines, header_count);
+    sdsfree(header);
     return map;
 }
 
