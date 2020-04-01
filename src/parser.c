@@ -38,7 +38,7 @@ void add_to_job_queue(url_t *url_parse, GumboNode *node, sds_vec_t *job_queue, i
         sds url = sdsnew(href->value);
         if (!is_valid_url(url)) {
             url_t *resolved = resolve_reference(url, url_parse->raw);
-            url = resolved->raw;
+            url = sdsnew(resolved->raw);
             free_url(resolved);
         }
         if (is_valid_url(url) && url_validation(url_parse->raw, url)) {

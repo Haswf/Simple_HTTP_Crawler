@@ -22,11 +22,9 @@ int main(int agrc, char *argv[]) {
     sds_vec_t *job_queue = malloc(sizeof(*job_queue));
     vec_init(job_queue);
 
-//    sds initial = sdsnew(argv[1]);
+    sds initial = sdsnew(argv[1]);
 
-//    add_absolute_to_queue(initial, seen, job_queue);
-    add_absolute_to_queue("http://www.w3.org/", seen, job_queue);
-    add_absolute_to_queue("http://www.w3.org/", seen, job_queue);
+    add_absolute_to_queue(initial, seen, job_queue);
 
 
     while (job_queue->length > 0) {
@@ -89,11 +87,11 @@ int do_crawler(sds url, sds_vec_t *job_queue, int_map_t *seen) {
                 if (response->status_code == SERVICE_UNAVAILABLE || response->status_code == GATEWAY_TIMEOUT) {
                     error = retry_handler(parse_result, response, job_queue, seen);
                 } else {
-                    error = failure_handler(parse_result, response, job_queue, seen);
+                    error = failure_handler(parse_result, response, seen);
                 }
 
             } else {
-                error = failure_handler(parse_result, response, job_queue, seen);
+                error = failure_handler(parse_result, response, seen);
             }
             free_response(response);
         }
@@ -117,8 +115,8 @@ int success_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_ma
             url_t *resolved = resolve_reference(alternative_path, url->raw);
             key = build_key(resolved->raw);
             mark_visited(resolved->raw, seen);
+            log_debug("Alternative location %s saved", resolved->raw);
             sdsfree(key);
-
             free_url(resolved);
         }
         search_and_add_url(url, response->body, job_queue, seen);
@@ -276,7 +274,7 @@ int add_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
     int *status = map_get(seen, key);
     sdsfree(key);
     if (status == NULL || *status == RETRY_FLAG) {
-        log_debug("\t|+ %s added to the job queue", abs_url);
+        log_trace("\t|+ %s added to the job queue", abs_url);
         return vec_push(job_queue, abs_url);
     }
     return -1;

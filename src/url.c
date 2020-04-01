@@ -62,14 +62,17 @@ sds remove_dot_segment(sds input) {
         if (strstr(input, key = "/../") == input || strstr(input, key = "/..") == input) {
             sdsrange(input, strlen(key), sdslen(input));
             input = sdscatprintf(sdsempty(), "/%s", input);
-            char *preceding_slash = strrchr(output, '/');
             // If the right most slash is at the start, i.e. output buffer only has one path segment
-            if (preceding_slash == output) {
-                sdsclear(output);
-            } else {
-                sdsrange(output, 0, sdslen(output) - strlen(preceding_slash) - 1);
+            if (sdslen(output)) {
+                char *preceding_slash = strrchr(output, '/');
+                if (preceding_slash == output) {
+                    sdsclear(output);
+                } else {
+                    sdsrange(output, 0, sdslen(output) - strlen(preceding_slash) - 1);
+                }
+                continue;
             }
-            continue;
+
         }
 
         /*
