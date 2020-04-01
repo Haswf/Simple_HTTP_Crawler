@@ -29,9 +29,7 @@ Response *send_http_request(Request *request, int portno, int *error) {
         return NULL;
     }
     char *buffer = (char *) calloc(RESPONSE_BUFFER, sizeof(buffer));
-//    sds buffer = sdsnewlen("", RESPONSE_BUFFER);
     *error = receive_from_server(sockfd, &buffer);
-    // free response buffer if something goes wrong
     if (*error != 0) {
         free(buffer);
         return NULL;
@@ -55,13 +53,13 @@ Response *send_http_request(Request *request, int portno, int *error) {
  * @param buffer
  * @return
  */
-char *locate_header(char *buffer) {
+char *locate_body(char *buffer) {
     char *header_body_separator = "\r\n\r\n";
     return strstr(buffer, header_body_separator);
 }
 
 sds_map_t *extract_header(char *buffer) {
-    char *where_body_is = locate_header(buffer);
+    char *where_body_is = locate_body(buffer);
     if (!where_body_is) {
         return NULL;
     }
@@ -90,7 +88,7 @@ sds_map_t *extract_header(char *buffer) {
             char *first_colon = strstr(lines[j], ":");
             sds name = sdscpylen(sdsempty(), lines[j], strlen(lines[j]) - strlen(first_colon));
             sds value = sdsnew(first_colon + 1);
-            value = sdstrim(value, " \n");
+            sdstrim(value, " \n");
 
             // Add header to map
             map_set(map, lower(name), value);
@@ -113,7 +111,7 @@ bool isBufferSufficient(sds_map_t *header_map) {
             return false;
         }
         if (expected > RESPONSE_BUFFER - 1) {
-            log_error("\t|- Aborted: Expected content length exceeds buffer size");
+            log_error("\t|- Aborted: Expected Content-Length exceeds buffer size %d > %d", expected, RESPONSE_BUFFER);
             return false;
         }
     }

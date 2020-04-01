@@ -12,7 +12,7 @@
 
 Response *send_http_request(Request *request, int portno, int *status);
 
-char *locate_header(char *buffer);
+char *locate_body(char *buffer);
 
 sds_map_t *extract_header(char *buffer);
 

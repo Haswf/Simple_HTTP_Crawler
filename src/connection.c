@@ -3,7 +3,6 @@
 //
 
 #include "connection.h"
-#include "HTTP.h"
 #include "crawler.h"
 
 int create_connection(sds host, int portno, int *sockfd) {
@@ -35,9 +34,10 @@ int create_connection(sds host, int portno, int *sockfd) {
         log_error("Failed to connect to socket: %d", *sockfd);
         return 1;
     }
-    if (set_timeout(*sockfd)) {
-        return 1;
-    }
+    // Disable socket timeout
+//    if (set_timeout(*sockfd)) {
+//        return 1;
+//    }
 
     return 0;
 }
@@ -68,14 +68,17 @@ int close_connection(int sockfd) {
 }
 
 int receive_from_server(int sockfd, sds *buffer) {
-    int total, received, bytes;
+    int total, received, bytes, content_total;
 
-    char *header_pos = NULL;
-    sds_map_t *header_map;
+    char *body_pos = NULL;
+    sds_map_t *header_map = NULL;
 
     /* receive the response */
     total = RESPONSE_BUFFER - 1;
     received = 0;
+    content_total = 0;
+
+    bool has_content_length = false;
 
     while (received < total) {
         bytes = recv(sockfd, *buffer + received, total - received, 0);
@@ -86,23 +89,38 @@ int receive_from_server(int sockfd, sds *buffer) {
         if (bytes == 0)
             break;
         received += bytes;
+
         // If we find header for the first time
-        if (locate_header(*buffer) && !header_pos) {
-            header_pos = locate_header(*buffer);
+        if (locate_body(*buffer) && !body_pos) {
+            body_pos = locate_body(*buffer);
             header_map = extract_header(*buffer);
             if (!isBufferSufficient(header_map) || !isHTML(header_map)) {
                 return 1;
             };
+            if (getContentLength(header_map)) {
+                content_total = atoi(getContentLength(header_map));
+                has_content_length = true;
+            }
         }
+
+        if (has_content_length) {
+            if (strlen(body_pos) >= content_total) {
+                break;
+            }
+        }
+
+
     }
 
     if (received == total) {
         log_error("Fail to save response to buffer: BUFFER FULL");
         return 1;
     }
-//    sdsRemoveFreeSpace(*buffer);
-    map_deinit(header_map);
-    free(header_map);
+
+    if (header_map) {
+        map_deinit(header_map);
+        free(header_map);
+    }
     return 0;
 }
 
