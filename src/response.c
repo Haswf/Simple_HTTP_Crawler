@@ -53,7 +53,7 @@ Response *parse_response(sds *buffer) {
             // Add header to map
             map_set(response->header, lower(name), value);
             sdsfree(name);
-            sdsfree(value);
+//            sdsfree(value);
         }
     }
     sdsfreesplitres(lines, header_count);

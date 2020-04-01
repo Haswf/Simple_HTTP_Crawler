@@ -90,11 +90,12 @@ sds_map_t *extract_header(char *buffer) {
             char *first_colon = strstr(lines[j], ":");
             sds name = sdscpylen(sdsempty(), lines[j], strlen(lines[j]) - strlen(first_colon));
             sds value = sdsnew(first_colon + 1);
+            value = sdstrim(value, " \n");
 
             // Add header to map
-            map_set(map, lower(name), sdstrim(value, " \n"));
+            map_set(map, lower(name), value);
             sdsfree(name);
-            sdsfree(value);
+//            sdsfree(value);
         }
     }
     sdsfreesplitres(lines, header_count);

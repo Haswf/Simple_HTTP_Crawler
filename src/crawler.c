@@ -58,10 +58,7 @@ int do_crawler(sds url, sds_vec_t *job_queue, int_map_t *seen) {
         url_t *parse_result = parse_url(url);
         // If given url doesn't contain any path, concate / as default path
         if (!parse_result->path) {
-            url = sdscat(url, "/");
-            free_url(parse_result);
-            // Reparse the url
-            parse_result = parse_url(url);
+            parse_result->path = sdsnew("/");
         }
         // Set path to / if none is given
         log_info("Fetching: %s", url);
