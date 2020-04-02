@@ -291,7 +291,7 @@ int retry_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_
                  response->status_code);
     } else {
         mark_retry(sdsnew(url->raw), seen, job_queue);
-        vec_push(job_queue, url->raw);
+        vec_push(job_queue, sdsdup(url->raw));
         log_info("\t|- failed\t\t%d\tRetry scheduled", response->status_code);
     }
     return 1;
