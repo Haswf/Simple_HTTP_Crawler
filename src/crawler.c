@@ -157,7 +157,7 @@ int response_to_http_status(Response *response, url_t *parse_result, sds_vec_t *
         } else if (response->status_code == URI_TOO_LONG) {
             search_and_add_url(parse_result, response->body, job_queue, seen);
             mark_post(parse_result, response, seen);
-            vec_push(job_queue, parse_result->raw);
+            vec_push(job_queue, sdsnew(parse_result->raw));
         } else {
             error = failure_handler(parse_result, response, seen);
         }
