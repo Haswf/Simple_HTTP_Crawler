@@ -1,0 +1,3 @@
+all:
+	cmake .
+	cmake --build ./
