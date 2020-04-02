@@ -285,7 +285,7 @@ int retry_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_
         log_info("\t|- Retry failed\t\t%d\t No further retry will be attempted",
                  response->status_code);
     } else {
-        mark_retry(url->raw, seen, job_queue);
+        mark_retry(sdsnew(url->raw), seen, job_queue);
         log_info("\t|- failed\t\t%d\tRetry scheduled", response->status_code);
     }
     return 1;
