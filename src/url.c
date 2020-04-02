@@ -288,6 +288,9 @@ sds recomposition(url_t *url) {
 }
 
 url_t *resolve_reference(sds reference, sds base) {
+    if (strstr(reference, "//") == reference) {
+        reference = sdscatfmt(reference, "http://%s", reference);
+    }
     url_t *reference_parsed = parse_url(reference);
     url_t *base_parsed = parse_url(base);
     url_t *target = malloc(sizeof(*target));
