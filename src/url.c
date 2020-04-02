@@ -254,7 +254,8 @@ bool is_valid_url(sds url) {
     }
     regfree(&compiled);
 
-    if (matchptr[SCHEME_INDEX].rm_so == -1 && matchptr[AUTHORITY_INDEX].rm_so == -1) {
+    // a url is invalid if either scheme or authority is missing
+    if (matchptr[SCHEME_INDEX].rm_so == -1 || matchptr[AUTHORITY_INDEX].rm_so == -1) {
         return false;
     }
     return true;
