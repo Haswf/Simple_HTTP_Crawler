@@ -422,11 +422,11 @@ bool url_validation(sds src, sds target) {
     sds src_host = sdsnew(src_parsed->authority);
     sds target_host = sdsnew(target_parsed->authority);
 
-    // TODO: Only parses pages that use http
-    if (compare_scheme(src_parsed, target_parsed)) {
-        log_trace("Scheme Validation failed: %s %s", src_parsed->scheme, target_parsed->scheme);
-        return false;
-    }
+//    // TODO: Only parses pages that use http
+//    if (compare_scheme(src_parsed, target_parsed)) {
+//        log_trace("Scheme Validation failed: %s %s", src_parsed->scheme, target_parsed->scheme);
+//        return false;
+//    }
 
     free_url(src_parsed);
     free_url(target_parsed);

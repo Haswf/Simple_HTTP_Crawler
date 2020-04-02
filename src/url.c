@@ -287,9 +287,13 @@ sds recomposition(url_t *url) {
     return result;
 }
 
+bool is_implied_protocol(sds relative) {
+    return strstr(relative, "//") == relative;
+}
+
 url_t *resolve_reference(sds reference, sds base) {
-    if (strstr(reference, "//") == reference) {
-        reference = sdscatfmt(reference, "http://%s", reference);
+    if (is_implied_protocol(reference)) {
+        reference = sdscatprintf(sdsempty(), "http:%s", reference);
     }
     url_t *reference_parsed = parse_url(reference);
     url_t *base_parsed = parse_url(base);
@@ -330,4 +334,3 @@ url_t *resolve_reference(sds reference, sds base) {
     target->raw = recomposition(target);
     return target;
 }
-
