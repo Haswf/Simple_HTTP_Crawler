@@ -13,7 +13,7 @@
 
 int process_header(Response *response);
 
-int do_crawler(sds url, sds_vec_t *job_queue, int_map_t *seen);
+int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *seen);
 
 int mark_visited(sds url, int_map_t *seen);
 
@@ -62,4 +62,5 @@ void set_headers(Request *request);
 
 int deinit(int_map_t **seen, sds_vec_t **job_queue);
 
+int mark_post(sds url, int_map_t *seen, sds_vec_t *job_queue);
 #endif //COMP30023_2020_PROJECT1_CRAWLER_H

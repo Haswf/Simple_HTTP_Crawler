@@ -21,7 +21,7 @@
 #define FAILURE_FLAG (-1)
 #define RETRY_FLAG 0
 #define VISITED_FLAG 1
-
+#define POST_FLAG 2
 #define SERVICE_UNAVAILABLE 503
 #define GATEWAY_TIMEOUT 504
 #define NOT_FOUND 404

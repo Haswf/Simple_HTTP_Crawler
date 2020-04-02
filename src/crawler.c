@@ -56,7 +56,9 @@ int main(int agrc, char *argv[]) {
         sdsfree(key);
         // Fetch the page only if we've never visited it before or it has been mark as retry
         if (!status || *status == RETRY_FLAG) {
-            error = do_crawler(url, job_queue, seen);
+            error = do_crawler(url, sdsnew("GET"), sdsempty(), job_queue, seen);
+        } else if (*status == POST_FLAG) {
+            error = do_crawler(url, sdsnew("POST"), sdsempty(), job_queue, seen);
         }
         failure += error;
         total++;
@@ -69,7 +71,7 @@ int main(int agrc, char *argv[]) {
 }
 
 
-int do_crawler(sds url, sds_vec_t *job_queue, int_map_t *seen) {
+int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *seen) {
     url_t *parse_result = NULL;
     Request *request = NULL;
     Response *response = NULL;
@@ -91,7 +93,7 @@ int do_crawler(sds url, sds_vec_t *job_queue, int_map_t *seen) {
     printf("%s\n", url);
 
     request = create_http_request(sdsnew(parse_result->authority), sdsnew(parse_result->path),
-                                  sdsnew("GET"), sdsnew(""));
+                                  method, body);
     set_headers(request);
 
     response = send_http_request(request, PORT, &error);
@@ -139,8 +141,8 @@ int response_to_http_status(Response *response, url_t *parse_result, sds_vec_t *
 
     // Success
     if (response->status_code / 100 == 2) {
-        error = success_handler(parse_result, response, seen);
         search_and_add_url(parse_result, response->body, job_queue, seen);
+        error = success_handler(parse_result, response, seen);
     }
         // Redirection
     else if (response->status_code / 100 == 3) {
@@ -149,10 +151,13 @@ int response_to_http_status(Response *response, url_t *parse_result, sds_vec_t *
 
         // Client Error
     else if (response->status_code / 100 == 4) {
-        if (response->status_code == NOT_FOUND || response->status_code == GONE ||
-            response->status_code == URI_TOO_LONG) {
-            error = failure_handler(parse_result, response, seen);
+        if (response->status_code == NOT_FOUND || response->status_code == GONE) {
             search_and_add_url(parse_result, response->body, job_queue, seen);
+            error = failure_handler(parse_result, response, seen);
+        } else if (response->status_code == URI_TOO_LONG) {
+            search_and_add_url(parse_result, response->body, job_queue, seen);
+            mark_post(parse_result, response, seen);
+            vec_push(job_queue, parse_result->raw);
         } else {
             error = failure_handler(parse_result, response, seen);
         }
@@ -286,6 +291,7 @@ int retry_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_
                  response->status_code);
     } else {
         mark_retry(sdsnew(url->raw), seen, job_queue);
+        vec_push(job_queue, url->raw);
         log_info("\t|- failed\t\t%d\tRetry scheduled", response->status_code);
     }
     return 1;
@@ -317,6 +323,14 @@ int mark_failure(sds url, int_map_t *seen) {
     return result;
 }
 
+
+int mark_post(sds url, int_map_t *seen, sds_vec_t *job_queue) {
+    sds key = build_key(url);
+    int result = map_set(seen, key, POST_FLAG);
+    sdsfree(key);
+    return result;
+}
+
 /**
  * Mark an url to retry later
  * @param url
@@ -325,9 +339,10 @@ int mark_failure(sds url, int_map_t *seen) {
  * @return
  */
 int mark_retry(sds url, int_map_t *seen, sds_vec_t *job_queue) {
-    map_set(seen, url, RETRY_FLAG);
-    vec_push(job_queue, url);
-    return 0;
+    sds key = build_key(url);
+    int result = map_set(seen, key, RETRY_FLAG);
+    sdsfree(key);
+    return result;
 }
 
 int add_absolute_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
