@@ -149,15 +149,15 @@ int response_to_http_status(Response *response, url_t *parse_result, sds_vec_t *
         error = redirection_handler(parse_result, response, job_queue, seen);
     }
 
-        // Client Error
+    // Client Error
     else if (response->status_code / 100 == 4) {
         if (response->status_code == NOT_FOUND || response->status_code == GONE) {
             search_and_add_url(parse_result, response->body, job_queue, seen);
             error = failure_handler(parse_result, response, seen);
         } else if (response->status_code == URI_TOO_LONG) {
             search_and_add_url(parse_result, response->body, job_queue, seen);
-            mark_post(parse_result, response, seen);
-            vec_push(job_queue, sdsnew(parse_result->raw));
+            mark_post(parse_result->raw, seen, job_queue);
+            add_absolute_to_queue(sdsnew(parse_result->raw), seen, job_queue);
         } else {
             error = failure_handler(parse_result, response, seen);
         }
@@ -366,7 +366,7 @@ int add_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
     sdsfree(key);
 
     sdstrim(abs_url, " \n");
-    if (status == NULL || *status == RETRY_FLAG) {
+    if (status == NULL || *status == RETRY_FLAG || *status == POST_FLAG) {
         log_trace("\t|+ %s added to the job queue", abs_url);
         return vec_push(job_queue, abs_url);
     }
