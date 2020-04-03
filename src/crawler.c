@@ -45,6 +45,13 @@ int main(int agrc, char *argv[]) {
 
     init(&seen, &job_queue);
 
+    sds_map_t *common_header = malloc(sizeof(*common_header));
+    map_init(common_header);
+
+    map_set(common_header, "Connection", CONNECTION);
+    map_set(common_header, "User-Agent", USER_AGENT);
+    map_set(common_header, "Accept", HTML_CONTENT_TYPE);
+
     sds initial = sdsnew(argv[1]);
     add_to_queue(initial, seen, job_queue);
 
@@ -57,10 +64,15 @@ int main(int agrc, char *argv[]) {
         sdsfree(key);
         // Fetch the page only if we've never visited it before or it has been mark as retry
         if (!status || *status == RETRY_FLAG) {
-            error = do_crawler(url, sdsnew("GET"), sdsempty(), job_queue, seen);
+            error = do_crawler(url, sdsnew("GET"), sdsempty(), job_queue, seen, common_header);
             total++;
         } else if (*status == POST_FLAG) {
-            error = do_crawler(url, sdsnew("POST"), sdsempty(), job_queue, seen);
+            error = do_crawler(url, sdsnew("POST"), sdsempty(), job_queue, seen, common_header);
+            total++;
+        } else if (*status == AUTH_FLAG) {
+            map_set(common_header, AUTHORIZATION, sdscatprintf(sdsempty(), "Basic %s", TOKEN));
+            error = do_crawler(url, sdsnew("GET"), sdsempty(), job_queue, seen, common_header);
+            map_remove(common_header, AUTHORIZATION);
             total++;
         }
         failure += error;
@@ -73,7 +85,7 @@ int main(int agrc, char *argv[]) {
 }
 
 
-int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *seen) {
+int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *seen, sds_map_t *header) {
     url_t *parse_result = NULL;
     Request *request = NULL;
     Response *response = NULL;
@@ -96,7 +108,7 @@ int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *s
 
     request = create_http_request(sdsnew(parse_result->authority), sdsnew(parse_result->path),
                                   method, body);
-    set_headers(request);
+    set_headers(request, header);
 
     response = send_http_request(request, PORT, &error);
     if (error) {
@@ -106,6 +118,7 @@ int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *s
 
     if (is_truncated_page(response)) {
         error = retry_handler(parse_result, response, job_queue, seen);
+        mark_retry(sdsnew(parse_result->raw), seen);
         return clean_up(request, response, parse_result);
     } else {
         // print response header and body for debugging
@@ -118,11 +131,13 @@ int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *s
     return error;
 }
 
-void set_headers(Request *request) {
-    add_header(request, "Connection", CONNECTION);
-    // Provides a User-Agent header
-    add_header(request, "User-Agent", USER_AGENT);
-    add_header(request, "Accept", HTML_CONTENT_TYPE);
+void set_headers(Request *request, sds_map_t *header_map) {
+    sds key;
+    map_iter_t iter = map_iter(header_map);
+
+    while ((key = (sds) map_next(header_map, &iter))) {
+        add_header(request, key, *map_get(header_map, key));
+    }
 }
 
 int clean_up(Request *request, Response *response, url_t *parse_result) {
@@ -163,6 +178,7 @@ int response_to_http_status(Response *response, url_t *parse_result, sds_vec_t *
 ////            vec_push(job_queue, sdsnew(parse_result->raw));
         } else if (response->status_code == UNAUTHORISED) {
             error = retry_handler(parse_result, response, job_queue, seen);
+            mark_auth_required(parse_result->raw, seen);
         } else {
             error = failure_handler(parse_result, response, seen);
         }
@@ -173,6 +189,7 @@ int response_to_http_status(Response *response, url_t *parse_result, sds_vec_t *
         if (response->status_code == SERVICE_UNAVAILABLE || response->status_code == GATEWAY_TIMEOUT) {
             // TODO: The crawler will attempt to revisit a page when the status code of a response indicates a temporary failure.
             error = retry_handler(parse_result, response, job_queue, seen);
+            mark_retry(parse_result->raw, seen);
             search_and_add_url(parse_result, response->body, job_queue, seen);
         } else {
             error = failure_handler(parse_result, response, seen);
@@ -284,11 +301,10 @@ int retry_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_
     sdsfree(key);
 
     // If a page has been fetched and failed
-    if (status && *status == RETRY_FLAG) {
+    if (status && (*status == RETRY_FLAG || *status == AUTH_FLAG)) {
         log_info("\t|- Retry failed\t\t%d\t No further retry will be attempted",
                  response->status_code);
     } else {
-        mark_retry(sdsnew(url->raw), seen);
         vec_push(job_queue, sdsdup(url->raw));
         log_info("\t|- failed\t\t%d\tRetry scheduled", response->status_code);
     }
@@ -361,6 +377,17 @@ int mark_post(sds url, int_map_t *seen) {
  */
 int mark_retry(sds url, int_map_t *seen) {
     return seen_set(seen, url, RETRY_FLAG);;
+}
+
+/**
+ * Mark an url to retry later
+ * @param url
+ * @param seen
+ * @param job_queue
+ * @return
+ */
+int mark_auth_required(sds url, int_map_t *seen) {
+    return seen_set(seen, url, AUTH_FLAG);;
 }
 
 /**

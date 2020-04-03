@@ -13,7 +13,7 @@
 
 int process_header(Response *response);
 
-int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *seen);
+int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *seen, sds_map_t *header);
 
 int mark_visited(sds url, int_map_t *seen);
 
@@ -57,10 +57,12 @@ int response_to_http_status(Response *response, url_t *parse_result, sds_vec_t *
 
 int clean_up(Request *request, Response *response, url_t *parse_result);
 
-void set_headers(Request *request);
+void set_headers(Request *request, sds_map_t *header_map);
 
 int deinit(int_map_t **seen, sds_vec_t **job_queue);
 
 int mark_post(sds url, int_map_t *seen);
+
+int mark_auth_required(sds url, int_map_t *seen);
 
 #endif //COMP30023_2020_PROJECT1_CRAWLER_H

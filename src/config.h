@@ -22,8 +22,9 @@
 #define RETRY_FLAG 0
 #define VISITED_FLAG 1
 #define POST_FLAG 2
-#define AUTHORIZATION 3
+#define AUTH_FLAG 3
 
+#define TOKEN "c2h1eWFuZ2Y6cGFzc3dvcmQ="
 
 #define SERVICE_UNAVAILABLE 503
 #define GATEWAY_TIMEOUT 504
@@ -36,6 +37,6 @@
 #define HTML_CONTENT_TYPE "text/html"
 #define CONTENT_LENGTH "content-length"
 #define CONTENT_LOCATION "content-location"
-
+#define AUTHORIZATION "Authorization"
 #define LOCATION "location"
 #endif //COMP30023_2020_PROJECT1_CONFIG_H
