@@ -46,22 +46,24 @@ int main(int agrc, char *argv[]) {
     init(&seen, &job_queue);
 
     sds initial = sdsnew(argv[1]);
-    add_absolute_to_queue(initial, seen, job_queue);
+    add_to_queue(initial, seen, job_queue);
 
     while (job_queue->length > 0) {
         int error = 0;
         sds url = vec_pop(job_queue);
+
         sds key = build_key(url);
         int *status = map_get(seen, key);
         sdsfree(key);
         // Fetch the page only if we've never visited it before or it has been mark as retry
         if (!status || *status == RETRY_FLAG) {
             error = do_crawler(url, sdsnew("GET"), sdsempty(), job_queue, seen);
+            total++;
         } else if (*status == POST_FLAG) {
             error = do_crawler(url, sdsnew("POST"), sdsempty(), job_queue, seen);
+            total++;
         }
         failure += error;
-        total++;
     }
     deinit(&seen, &job_queue);
 
@@ -159,6 +161,8 @@ int response_to_http_status(Response *response, url_t *parse_result, sds_vec_t *
 //            search_and_add_url(parse_result, response->body, job_queue, seen);
 ////            mark_post(parse_result, response, seen);
 ////            vec_push(job_queue, sdsnew(parse_result->raw));
+        } else if (response->status_code == UNAUTHORISED) {
+            error = retry_handler(parse_result, response, job_queue, seen);
         } else {
             error = failure_handler(parse_result, response, seen);
         }
@@ -186,21 +190,16 @@ int response_to_http_status(Response *response, url_t *parse_result, sds_vec_t *
 
 int success_handler(url_t *url, Response *response, int_map_t *seen) {
     if (content_type_validation(response->header)) {
-        sds key = build_key(url->raw);
-        mark_visited(key, seen);
-        sdsfree(key);
+        mark_visited(url->raw, seen);
 
-        // TODO: "Two pages are considered to be the same page if the URLs indicate that they are the same." Comment out until it's okay to do so.
-
-//        sds alternative_path = getContentLocation(response->header);
-//        if (alternative_path) {
-//            url_t *resolved = resolve_reference(alternative_path, url->raw);
-//            key = build_key(resolved->raw);
-//            mark_visited(resolved->raw, seen);
-//            log_debug("Alternative location %s saved", resolved->raw);
-//            sdsfree(key);
-//            free_url(resolved);
-//        }
+        // TODO: "Two pages are considered to be the same page if the URLs indicate that they are the same."
+        sds alternative_path = getContentLocation(response->header);
+        if (alternative_path) {
+            url_t *resolved = resolve_reference(alternative_path, url->raw);
+            mark_visited(resolved->raw, seen);
+            log_debug("Alternative location %s saved", resolved->raw);
+            free_url(resolved);
+        }
         log_info("\t|- succeeded\t%d", response->status_code);
     }
     return 0;
@@ -208,7 +207,7 @@ int success_handler(url_t *url, Response *response, int_map_t *seen) {
 
 int redirection_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
     sds key = build_key(url->raw);
-    mark_visited(key, seen);
+    mark_visited(url->raw, seen);
     sdsfree(key);
     log_info("\t|- succeeded\t%d", response->status_code);
 
@@ -216,7 +215,7 @@ int redirection_handler(url_t *url, Response *response, sds_vec_t *job_queue, in
     if (redirect_to != NULL && url_validation(url->raw, redirect_to)) {
         log_info("\t|- Redirect to %s", redirect_to);
         // TODO: check if redirected url follows rules in spec
-        add_absolute_to_queue(redirect_to, seen, job_queue);
+        add_to_queue(redirect_to, seen, job_queue);
     } else {
         log_info("\t|- Redirection URL is not supported %s", redirect_to);
     }
@@ -262,9 +261,7 @@ sds getContentType(sds_map_t *header_map) {
 
 
 int failure_handler(url_t *url, Response *response, int_map_t *seen) {
-    sds key = build_key(url->raw);
-    mark_failure(key, seen);
-    sdsfree(key);
+    mark_failure(url->raw, seen);
     if (response) {
         log_info("\t|- failed\t\t%d\tMarked as failure", response->status_code);
     } else {
@@ -291,11 +288,43 @@ int retry_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_
         log_info("\t|- Retry failed\t\t%d\t No further retry will be attempted",
                  response->status_code);
     } else {
-        mark_retry(sdsnew(url->raw), seen, job_queue);
+        mark_retry(sdsnew(url->raw), seen);
         vec_push(job_queue, sdsdup(url->raw));
         log_info("\t|- failed\t\t%d\tRetry scheduled", response->status_code);
     }
     return 1;
+}
+
+/**
+ *
+ * @param url
+ * @param response
+ * @param job_queue
+ * @param seen
+ * @return
+ */
+int authorization_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
+    sds key = build_key(url->raw);
+    int *status = map_get(seen, key);
+    sdsfree(key);
+
+    // If a page has been fetched and failed
+    if (status && *status == AUTHORIZATION) {
+        log_info("\t|- Retry failed\t\t%d\t No further retry will be attempted",
+                 response->status_code);
+    } else {
+        mark_retry(sdsnew(url->raw), seen);
+        vec_push(job_queue, sdsdup(url->raw));
+        log_info("\t|- failed\t\t%d\tRetry scheduled", response->status_code);
+    }
+    return 1;
+}
+
+int seen_set(int_map_t *seen, sds key, int value) {
+    sds _key = build_key(key);
+    int result = map_set(seen, _key, value);
+    sdsfree(_key);
+    return result;
 }
 
 /**
@@ -305,10 +334,7 @@ int retry_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_
  * @return
  */
 int mark_visited(sds url, int_map_t *seen) {
-    sds key = build_key(url);
-    int result = map_set(seen, key, VISITED_FLAG);
-    sdsfree(key);
-    return result;
+    return seen_set(seen, url, VISITED_FLAG);;
 }
 
 /**
@@ -318,19 +344,13 @@ int mark_visited(sds url, int_map_t *seen) {
  * @return
  */
 int mark_failure(sds url, int_map_t *seen) {
-    sds key = build_key(url);
-    int result = map_set(seen, key, FAILURE_FLAG);
-    sdsfree(key);
-    return result;
+    return seen_set(seen, url, FAILURE_FLAG);;
 }
 
 
-//int mark_post(sds url, int_map_t *seen, sds_vec_t *job_queue) {
-//    sds key = build_key(url);
-//    int result = map_set(seen, key, POST_FLAG);
-//    sdsfree(key);
-//    return result;
-//}
+int mark_post(sds url, int_map_t *seen) {
+    return seen_set(seen, url, POST_FLAG);;
+}
 
 /**
  * Mark an url to retry later
@@ -339,18 +359,8 @@ int mark_failure(sds url, int_map_t *seen) {
  * @param job_queue
  * @return
  */
-int mark_retry(sds url, int_map_t *seen, sds_vec_t *job_queue) {
-    sds key = build_key(url);
-    int result = map_set(seen, key, RETRY_FLAG);
-    sdsfree(key);
-    return result;
-}
-
-int add_absolute_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
-    if (abs_url == NULL) {
-        return 1;
-    }
-    return add_to_queue(abs_url, seen, job_queue);
+int mark_retry(sds url, int_map_t *seen) {
+    return seen_set(seen, url, RETRY_FLAG);;
 }
 
 /**
@@ -361,6 +371,12 @@ int add_absolute_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
  * @return
  */
 int add_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
+    if (abs_url == NULL || seen == NULL || job_queue == NULL) {
+        return 1;
+    }
+    if (!sdslen(abs_url)) {
+        return 1;
+    }
 
     sds key = build_key(abs_url);
     int *status = map_get(seen, key);
@@ -411,7 +427,6 @@ sds build_key(sds url) {
         key = sdscatfmt(key, "/");
     }
 
-    free_url(result);
     return key;
 }
 

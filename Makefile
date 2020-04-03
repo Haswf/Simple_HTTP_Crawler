@@ -8,11 +8,11 @@ lib = $(wildcard lib/gumbo/*.c) \
 obj = $(src:.c=.o) $(lib:.c=.o)
 OBJDIR := obj
 TARGET := crawler
-CFLAGS = -g  -Wall -O3
+CFLAGS = -g -Wall -O3
 CC = gcc
 
 crawler: $(obj)
-	$(CC) -o $@ $^ $(DEBUG_LEVEL) $(EXTRA_CCFLAGS)
+	$(CC) -o $@ $^ $(CFLAGS)
 
 $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<

@@ -42,7 +42,7 @@ void add_to_job_queue(url_t *url_parse, GumboNode *node, sds_vec_t *job_queue, i
             free_url(resolved);
         }
         if (is_valid_url(url) && url_validation(url_parse->raw, url)) {
-            add_absolute_to_queue(url, seen, job_queue);
+            add_to_queue(url, seen, job_queue);
         }
     }
     GumboVector *children = &node->v.element.children;

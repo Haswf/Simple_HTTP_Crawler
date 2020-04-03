@@ -17,7 +17,7 @@ int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *s
 
 int mark_visited(sds url, int_map_t *seen);
 
-int mark_retry(sds url, int_map_t *seen, sds_vec_t *job_queue);
+int mark_retry(sds url, int_map_t *seen);
 
 int mark_failure(sds url, int_map_t *seen);
 
@@ -30,7 +30,6 @@ int add_absolute_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue);
 bool is_valid_url(sds url);
 
 bool url_validation(sds src, sds target);
-
 
 bool content_type_validation(sds_map_t *header_map);
 
@@ -62,5 +61,6 @@ void set_headers(Request *request);
 
 int deinit(int_map_t **seen, sds_vec_t **job_queue);
 
-int mark_post(sds url, int_map_t *seen, sds_vec_t *job_queue);
+int mark_post(sds url, int_map_t *seen);
+
 #endif //COMP30023_2020_PROJECT1_CRAWLER_H
