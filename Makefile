@@ -16,3 +16,7 @@ crawler: $(obj)
 
 $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+clean:
+	find . -name '*.o' -delete
+	rm crawler

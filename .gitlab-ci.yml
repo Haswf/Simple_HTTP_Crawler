@@ -1,4 +1,4 @@
-image: 172.26.132.26:5000/comp30023/test-man
+image:  115.146.92.24:5000/comp30023/test-man:latest
 test:
     script:
         - /tests/test.sh $(echo ${CI_PROJECT_PATH} | cut -d/ -f2)
