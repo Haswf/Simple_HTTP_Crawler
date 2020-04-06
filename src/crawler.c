@@ -88,7 +88,7 @@ int main(int agrc, char *argv[]) {
 int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *seen, sds_map_t *header) {
     url_t *parse_result = NULL;
     Request *request = NULL;
-    Response *response = NULL;
+    response_t *response = NULL;
     int error = 0;
     if (!is_valid_url(url)) {
         log_error("Invalid URL %s- Missing scheme or host", url);
@@ -115,15 +115,15 @@ int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *s
         failure_handler(parse_result, response, seen);
         return clean_up(request, response, parse_result);
     }
+    // print response header and body for debugging
+    print_header(response);
+    print_body(response);
 
     if (is_truncated_page(response)) {
         error = retry_handler(parse_result, response, job_queue, seen);
         mark_retry(sdsnew(parse_result->raw), seen);
         return clean_up(request, response, parse_result);
     } else {
-        // print response header and body for debugging
-        print_header(response);
-        print_body(response);
         error = response_to_http_status(response, parse_result, job_queue, seen);
     }
 
@@ -140,7 +140,7 @@ void set_headers(Request *request, sds_map_t *header_map) {
     }
 }
 
-int clean_up(Request *request, Response *response, url_t *parse_result) {
+int clean_up(Request *request, response_t *response, url_t *parse_result) {
     if (request) {
         free_request(request);
     }
@@ -153,7 +153,7 @@ int clean_up(Request *request, Response *response, url_t *parse_result) {
     return 1;
 }
 
-int response_to_http_status(Response *response, url_t *parse_result, sds_vec_t *job_queue, int_map_t *seen) {
+int response_to_http_status(response_t *response, url_t *parse_result, sds_vec_t *job_queue, int_map_t *seen) {
     int error = 0;
 
     // Success
@@ -205,7 +205,7 @@ int response_to_http_status(Response *response, url_t *parse_result, sds_vec_t *
     return error;
 }
 
-int success_handler(url_t *url, Response *response, int_map_t *seen) {
+int success_handler(url_t *url, response_t *response, int_map_t *seen) {
     if (content_type_validation(response->header)) {
         mark_visited(url->raw, seen);
 
@@ -222,7 +222,7 @@ int success_handler(url_t *url, Response *response, int_map_t *seen) {
     return 0;
 }
 
-int redirection_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
+int redirection_handler(url_t *url, response_t *response, sds_vec_t *job_queue, int_map_t *seen) {
     sds key = build_key(url->raw);
     mark_visited(url->raw, seen);
     sdsfree(key);
@@ -277,7 +277,7 @@ sds getContentType(sds_map_t *header_map) {
 }
 
 
-int failure_handler(url_t *url, Response *response, int_map_t *seen) {
+int failure_handler(url_t *url, response_t *response, int_map_t *seen) {
     mark_failure(url->raw, seen);
     if (response) {
         log_info("\t|- failed\t\t%d\tMarked as failure", response->status_code);
@@ -295,7 +295,7 @@ int failure_handler(url_t *url, Response *response, int_map_t *seen) {
  * @param seen
  * @return
  */
-int retry_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
+int retry_handler(url_t *url, response_t *response, sds_vec_t *job_queue, int_map_t *seen) {
     sds key = build_key(url->raw);
     int *status = map_get(seen, key);
     sdsfree(key);
@@ -319,13 +319,13 @@ int retry_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_
  * @param seen
  * @return
  */
-int authorization_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen) {
+int authorization_handler(url_t *url, response_t *response, sds_vec_t *job_queue, int_map_t *seen) {
     sds key = build_key(url->raw);
     int *status = map_get(seen, key);
     sdsfree(key);
 
     // If a page has been fetched and failed
-    if (status && *status == AUTHORIZATION) {
+    if (status && *status == UNAUTHORISED) {
         log_info("\t|- Retry failed\t\t%d\t No further retry will be attempted",
                  response->status_code);
     } else {
@@ -418,7 +418,7 @@ int add_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
 }
 
 
-bool is_truncated_page(Response *response) {
+bool is_truncated_page(response_t *response) {
     sds content_length = getContentLength(response->header);
     if (content_length != NULL) {
         int actual = sdslen(response->body);
@@ -430,6 +430,8 @@ bool is_truncated_page(Response *response) {
             return true;
         }
     }
+    // Any response with no content-length header with be discarded
+    return true;
 }
 
 /**
@@ -443,17 +445,17 @@ sds build_key(sds url) {
     url_t *result = parse_url(url);
     sds key = sdsempty();
     if (result->scheme) {
-        key = sdscatprintf(key, "%s://", result->scheme);
+        key = sdscatprintf(key, "%s://", sdsnew(lower(result->scheme)));
     }
     if (result->authority) {
-        key = sdscat(key, result->authority);
+        key = sdscat(key, sdsnew(lower(result->authority)));
     }
     if (result->path) {
-        key = sdscat(key, result->path);
+        key = sdscat(key, sdsnew(result->path));
     } else {
         key = sdscatfmt(key, "/");
     }
-
+    free_url(result);
     return key;
 }
 
@@ -541,4 +543,5 @@ int compare_scheme(url_t *url1, url_t *url2) {
     if (url1->scheme && url2->scheme) {
         return sdscmp(url1->scheme, url2->scheme);
     }
+    return 1;
 }

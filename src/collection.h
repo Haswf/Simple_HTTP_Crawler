@@ -1,4 +1,4 @@
-//
+// Module to define data structures in the project
 // Created by Haswe on 3/25/2020.
 //
 

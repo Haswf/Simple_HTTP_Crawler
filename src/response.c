@@ -7,9 +7,9 @@
 #include "HTTP.h"
 
 
-Response *parse_response(sds *buffer) {
+response_t *parse_response(sds *buffer) {
     sds message = *buffer;
-    Response *response = (Response *) malloc(sizeof(*response));
+    response_t *response = (response_t *) malloc(sizeof(*response));
     // separator between response header and body
     char *header_body_separator = "\r\n\r\n";
 
@@ -61,7 +61,7 @@ Response *parse_response(sds *buffer) {
     return response;
 }
 
-void print_header(Response *response) {
+void print_header(response_t *response) {
     sds key;
     map_iter_t iter = map_iter(response->header);
     log_trace("----- RESPONSE HEADER ------");
@@ -70,12 +70,12 @@ void print_header(Response *response) {
     }
 }
 
-void print_body(Response *response) {
+void print_body(response_t *response) {
     log_trace("----- RESPONSE BODY ------");
     log_trace("%s", response->body);
 }
 
-void free_response(Response *response) {
+void free_response(response_t *response) {
     sdsfree(response->version);
     response->version = NULL;
     sdsfree(response->reason_phrase);

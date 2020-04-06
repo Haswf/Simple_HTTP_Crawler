@@ -14,7 +14,7 @@
 #include "../lib/log/log.h"
 #include "request.h"
 
-void print_url(Response *response);
+void print_url(response_t *response);
 
 void search_and_add_url(url_t *url_parse, sds html, sds_vec_t *job_queue, int_map_t *seen);
 

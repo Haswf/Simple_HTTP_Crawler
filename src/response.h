@@ -13,21 +13,21 @@
 #include "collection.h"
 #include <ctype.h>
 
-typedef struct Response {
+typedef struct response {
     sds version;
     int status_code;
     sds reason_phrase;
     sds body;
     sds_map_t *header;
-} Response;
+} response_t;
 
-Response *parse_response(sds *buffer);
+response_t *parse_response(sds *buffer);
 
-void print_header(Response *response);
+void print_header(response_t *response);
 
-void print_body(Response *response);
+void print_body(response_t *response);
 
-void free_response(Response *response);
+void free_response(response_t *response);
 
 sds lower(sds string);
 

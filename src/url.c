@@ -230,6 +230,7 @@ int free_url(url_t *url) {
         sdsfree(url->raw);
     }
     free(url);
+    return 0;
 }
 
 /**

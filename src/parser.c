@@ -1,10 +1,16 @@
-//
-// Created by Haswe on 3/25/2020.
-//
+/**
+ * Module to parse html using Gumbo
+ * Created by Haswe on 3/25/2020.
+ */
+
 #include "parser.h"
 #include "../lib/log/log.h"
 #include "crawler.h"
 
+/**
+ *
+ * @param node
+ */
 static void search_for_links(GumboNode *node) {
 
     if (node->type != GUMBO_NODE_ELEMENT) {
@@ -22,19 +28,30 @@ static void search_for_links(GumboNode *node) {
     }
 }
 
-void print_url(Response *response) {
+/**
+ * Print all urls found in a response
+ * @param response
+ */
+void print_url(response_t *response) {
     GumboOutput *output = gumbo_parse(response->body);
     search_for_links(output->root);
     gumbo_destroy_output(&kGumboDefaultOptions, output);
 }
 
+/**
+ * Helper function to add
+ * @param url_parse
+ * @param node
+ * @param job_queue
+ * @param seen
+ */
 void add_to_job_queue(url_t *url_parse, GumboNode *node, sds_vec_t *job_queue, int_map_t *seen) {
     if (node->type != GUMBO_NODE_ELEMENT) {
         return;
     }
     GumboAttribute *href;
     if (node->v.element.tag == GUMBO_TAG_A &&
-        (href = gumbo_get_attribute(&node->v.element.attributes, "href"))) {
+            (href = gumbo_get_attribute(&node->v.element.attributes, "href"))) {
         sds url = sdsnew(href->value);
         if (!is_valid_url(url)) {
             url_t *resolved = resolve_reference(url, url_parse->raw);

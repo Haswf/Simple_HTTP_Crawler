@@ -11,8 +11,6 @@
 #include "config.h"
 #include <stdbool.h>
 
-int process_header(Response *response);
-
 int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *seen, sds_map_t *header);
 
 int mark_visited(sds url, int_map_t *seen);
@@ -21,7 +19,7 @@ int mark_retry(sds url, int_map_t *seen);
 
 int mark_failure(sds url, int_map_t *seen);
 
-bool is_truncated_page(Response *response);
+bool is_truncated_page(response_t *response);
 
 int add_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue);
 
@@ -33,13 +31,13 @@ bool url_validation(sds src, sds target);
 
 bool content_type_validation(sds_map_t *header_map);
 
-int success_handler(url_t *url, Response *response, int_map_t *seen);
+int success_handler(url_t *url, response_t *response, int_map_t *seen);
 
-int failure_handler(url_t *url, Response *response, int_map_t *seen);
+int failure_handler(url_t *url, response_t *response, int_map_t *seen);
 
-int redirection_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen);
+int redirection_handler(url_t *url, response_t *response, sds_vec_t *job_queue, int_map_t *seen);
 
-int retry_handler(url_t *url, Response *response, sds_vec_t *job_queue, int_map_t *seen);
+int retry_handler(url_t *url, response_t *response, sds_vec_t *job_queue, int_map_t *seen);
 
 sds build_key(sds url);
 
@@ -53,9 +51,9 @@ sds getContentType(sds_map_t *header_map);
 
 int compare_scheme(url_t *url1, url_t *url2);
 
-int response_to_http_status(Response *response, url_t *parse_result, sds_vec_t *job_queue, int_map_t *seen);
+int response_to_http_status(response_t *response, url_t *parse_result, sds_vec_t *job_queue, int_map_t *seen);
 
-int clean_up(Request *request, Response *response, url_t *parse_result);
+int clean_up(Request *request, response_t *response, url_t *parse_result);
 
 void set_headers(Request *request, sds_map_t *header_map);
 

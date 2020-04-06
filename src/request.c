@@ -109,5 +109,6 @@ int free_request(Request *req) {
         free_url(req->parsed_url);
         req->header = NULL;
     }
-    free(req);;
+    free(req);
+    return 0;
 }
