@@ -1,0 +1,26 @@
+18:52:08 TRACE src/crawler.c:414: 	|+ http://www.ibdhost.com added to the job queue
+18:52:08 INFO  src/crawler.c:106: Fetching: http://www.ibdhost.com/
+18:52:08 TRACE src/HTTP.c:25: 
+---- HTTP Request -----
+GET / HTTP/1.1
+User-Agent: shuyangf
+Accept: text/html
+Host: www.ibdhost.com
+Connection: close
+
+--------------------------
+18:52:09 INFO  src/crawler.c:309: 	|- failed		200	Retry scheduled
+18:52:09 INFO  src/crawler.c:106: Fetching: http://www.ibdhost.com/
+18:52:09 TRACE src/HTTP.c:25: 
+---- HTTP Request -----
+GET / HTTP/1.1
+User-Agent: shuyangf
+Accept: text/html
+Host: www.ibdhost.com
+Connection: close
+
+--------------------------
+18:52:09 INFO  src/crawler.c:306: 	|- Retry failed		200	 No further retry will be attempted
+18:52:09 INFO  src/crawler.c:84: Total Success: 0
+Total Failure: 2
+

@@ -10,7 +10,7 @@
 #include "request.h"
 #include "response.h"
 
-response_t *send_http_request(Request *request, int portno, int *status);
+response_t *send_http_request(request_t *request, int portno, int *status);
 
 char *locate_body(char *buffer);
 

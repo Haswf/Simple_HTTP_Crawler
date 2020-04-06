@@ -1,6 +1,7 @@
-//
-// Created by Haswe on 3/26/2020.
-//
+/**
+ * Configuration of the crawler.
+ * Created by Haswe on 3/26/2020.
+ */
 
 #ifndef COMP30023_2020_PROJECT1_CONFIG_H
 #define COMP30023_2020_PROJECT1_CONFIG_H

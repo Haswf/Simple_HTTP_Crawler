@@ -53,9 +53,9 @@ int compare_scheme(url_t *url1, url_t *url2);
 
 int response_to_http_status(response_t *response, url_t *parse_result, sds_vec_t *job_queue, int_map_t *seen);
 
-int clean_up(Request *request, response_t *response, url_t *parse_result);
+int clean_up(request_t *request, response_t *response, url_t *parse_result);
 
-void set_headers(Request *request, sds_map_t *header_map);
+void set_headers(request_t *request, sds_map_t *header_map);
 
 int deinit(int_map_t **seen, sds_vec_t **job_queue);
 

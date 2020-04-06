@@ -1,8 +1,9 @@
 //
 // Created by Haswe on 3/31/2020.
 //
-
+#include "config.h"
 #include "url.h"
+#include "../lib/log/log.h"
 #include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -129,6 +130,7 @@ sds merge_path(sds base_uri, sds relative_path) {
       reference's path; otherwise,
      */
     if (parsed->authority && !parsed->path) {
+        free_url(parsed);
         return sdscatprintf(sdsempty(), "/%s", relative_path);
     }
 
@@ -139,7 +141,6 @@ sds merge_path(sds base_uri, sds relative_path) {
           path, or excluding the entire base URI path if it does not contain
           any "/" characters).
          */
-
     else {
         char *right_most_slash = strrchr(parsed->path, '/');
         if (right_most_slash) {
@@ -152,8 +153,16 @@ sds merge_path(sds base_uri, sds relative_path) {
 
 }
 
+/**
+ * Parse an url into url_t. This implementation uses regex suggested by RFC3986
+ * to split scheme, authority, path, query and segment.
+ * See  https://tools.ietf.org/html/rfc3986#section-5.1
+ * @param text
+ * @return
+ */
 url_t *parse_url(sds text) {
-    char pattern[80] = "^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?";
+    char *pattern = "^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?";
+    // Compile
     regex_t compiled;
     regcomp(&compiled, pattern, REG_EXTENDED);
 
@@ -162,13 +171,17 @@ url_t *parse_url(sds text) {
     int err = regexec(&compiled, text, nsub, matchptr, 0);
     if (err) {
         if (err == REG_NOMATCH) {
-            printf("Regular expression did not match.\n");
+            log_error("Regular expression did not match.\n");
         } else if (err == REG_ESPACE) {
-            printf("Ran out of memory.\n");
+            log_error("Ran out of memory.\n");
         }
     };
 
     url_t *parsed = (url_t *) malloc(sizeof(*parsed));
+    if (!parsed) {
+        log_error("Malloc space for url_t failed.");
+        return NULL;
+    }
     parsed->scheme = NULL;
     parsed->authority = NULL;
     parsed->path = NULL;
@@ -176,40 +189,63 @@ url_t *parse_url(sds text) {
     parsed->fragment = NULL;
     parsed->raw = NULL;
 
+    /*
+     * Save scheme
+     */
     if (matchptr[SCHEME_INDEX].rm_so != -1) {
         sds copy = sdsnew(text);
         sdsrange(copy, matchptr[SCHEME_INDEX].rm_so, matchptr[SCHEME_INDEX].rm_eo - 1);
         parsed->scheme = copy;
     }
 
+    /*
+     * Save authority(host)
+     */
     if (matchptr[AUTHORITY_INDEX].rm_so != -1) {
         sds copy = sdsnew(text);
         sdsrange(copy, matchptr[AUTHORITY_INDEX].rm_so, matchptr[AUTHORITY_INDEX].rm_eo - 1);
         parsed->authority = copy;
     }
 
+    /*
+     * Save path
+     */
     if (matchptr[PATH_INDEX].rm_so != -1 && matchptr[PATH_INDEX].rm_so != matchptr[PATH_INDEX].rm_eo) {
         sds copy = sdsnew(text);
         sdsrange(copy, matchptr[PATH_INDEX].rm_so, matchptr[PATH_INDEX].rm_eo - 1);
         parsed->path = copy;
     }
 
+    /*
+     * Save fragment(if there is any)
+     */
     if (matchptr[QUERY_INDEX].rm_so != -1) {
         sds copy = sdsnew(text);
         sdsrange(copy, matchptr[QUERY_INDEX].rm_so, matchptr[QUERY_INDEX].rm_eo - 1);
         parsed->query = copy;
     }
 
+    /*
+     * Save fragment(if there is any)
+     */
     if (matchptr[FRAGMENT_INDEX].rm_so != -1) {
         sds copy = sdsnew(text);
         sdsrange(copy, matchptr[FRAGMENT_INDEX].rm_so, matchptr[FRAGMENT_INDEX].rm_eo - 1);
         parsed->fragment = copy;
     }
+    /*
+     * Save raw url
+     */
     parsed->raw = sdsnew(text);
     regfree(&compiled);
     return parsed;
 }
 
+/**
+ * Free url
+ * @param url pointer to url_t to be freed
+ * @return
+ */
 int free_url(url_t *url) {
     if (url->scheme) {
         sdsfree(url->scheme);
@@ -230,33 +266,18 @@ int free_url(url_t *url) {
         sdsfree(url->raw);
     }
     free(url);
-    return 0;
+    return SUCCESS;
 }
 
 /**
- * Check if a url looks valid by attempting to parse it
+ * Check if a url follows URI Syntax defined in rfc3986
  * @param url
  * @return 0 for doesn't look an url, 1 for looks like an url
  */
 bool is_valid_url(sds url) {
-    char pattern[80] = "^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?";
-    regex_t compiled;
-    regcomp(&compiled, pattern, REG_EXTENDED);
-
-    int nsub = compiled.re_nsub;
-    regmatch_t matchptr[nsub];
-    int err = regexec(&compiled, url, nsub, matchptr, 0);
-    if (err) {
-        if (err == REG_NOMATCH) {
-            printf("Regular expression did not match.\n");
-        } else if (err == REG_ESPACE) {
-            printf("Ran out of memory.\n");
-        }
-    }
-    regfree(&compiled);
-
-    // a url is invalid if either scheme or authority is missing
-    if (matchptr[SCHEME_INDEX].rm_so == -1 || matchptr[AUTHORITY_INDEX].rm_so == -1) {
+    url_t *parsed = parse_url(url);
+    // According to RFC3986, an URI must have both scheme and authority
+    if (!parsed->scheme || !parsed->authority) {
         return false;
     }
     return true;
@@ -289,50 +310,91 @@ sds recomposition(url_t *url) {
     return result;
 }
 
+/**
+ * Check if an relative path has implied protocol
+ * @param relative path to be inspected
+ * @return
+ */
 bool is_implied_protocol(sds relative) {
     return strstr(relative, "//") == relative;
 }
 
+/**
+ * converts a URI reference that might be relative to a given base URI into the parsed components
+ * of the reference's target. This implementation follows the pseudocode at
+ * https://tools.ietf.org/html/rfc3986#section-5.2
+ * @param reference
+ * @param base
+ * @return
+ */
 url_t *resolve_reference(sds reference, sds base) {
+    /* Convert the implied scheme path to implied host path*/
     if (is_implied_protocol(reference)) {
         reference = sdscatprintf(sdsempty(), "http:%s", reference);
     }
+
+    /* Parse both base path and reference to effectively extract components */
     url_t *reference_parsed = parse_url(reference);
     url_t *base_parsed = parse_url(base);
     url_t *target = malloc(sizeof(*target));
+    if (!target) {
+        log_error("Malloc space for target failed");
+        return NULL;
+    }
 
     if (reference_parsed->scheme) {
-        target->scheme = reference_parsed->scheme;
-        target->authority = reference_parsed->authority;
+        target->scheme = safe_sdsdup(reference_parsed->scheme);
+        target->authority = safe_sdsdup(reference_parsed->authority);
         target->path = remove_dot_segment(reference_parsed->path);
-        target->query = reference_parsed->query;
+        target->query = safe_sdsdup(reference_parsed->query);
     } else {
         if (reference_parsed->authority) {
-            target->authority = reference_parsed->authority;
+            target->authority = safe_sdsdup(reference_parsed->authority);
             target->path = remove_dot_segment(reference_parsed->path);
-            target->query = reference_parsed->query;
+            target->query = safe_sdsdup(reference_parsed->query);
         } else {
             if (!reference_parsed->path) {
-                target->path = base_parsed->path;
+                target->path = safe_sdsdup(base_parsed->path);
                 if (reference_parsed->query) {
-                    target->query = reference_parsed->query;
+                    target->query = safe_sdsdup(reference_parsed->query);
                 } else {
-                    target->query = base_parsed->query;
+                    target->query = safe_sdsdup(base_parsed->query);
                 }
             } else {
+                /* if (R.path starts-with "/") then T.path = remove_dot_segments(R.path);
+                 */
                 if (strstr(reference_parsed->path, "/") == reference_parsed->path) {
                     target->path = remove_dot_segment(reference_parsed->path);
                 } else {
                     target->path = merge_path(base_parsed->path, reference_parsed->path);
                     target->path = remove_dot_segment(target->path);
                 }
-                target->query = reference_parsed->query;
+                target->query = safe_sdsdup(reference_parsed->query);
             }
-            target->authority = base_parsed->authority;
+            target->authority = safe_sdsdup(base_parsed->authority);
         }
-        target->scheme = base_parsed->scheme;
+        target->scheme = safe_sdsdup(base_parsed->scheme);
     }
-    target->fragment = reference_parsed->fragment;
+    target->fragment = safe_sdsdup(reference_parsed->fragment);
+
+    /* build the full absolute url from components */
     target->raw = recomposition(target);
+
+    /* Clean up*/
+    free(reference_parsed);
+    free(base_parsed);
     return target;
+
+}
+
+/**
+ * A wrapper of sdsup. Returns null if given sds is NULL
+ * @param toCopy
+ * @return
+ */
+sds safe_sdsdup(sds toCopy) {
+    if (toCopy) {
+        return sdsdup(toCopy);
+    }
+    return NULL;
 }

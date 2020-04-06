@@ -31,4 +31,5 @@ void free_response(response_t *response);
 
 sds lower(sds string);
 
+
 #endif //COMP30023_2020_PROJECT1_RESPONSE_H

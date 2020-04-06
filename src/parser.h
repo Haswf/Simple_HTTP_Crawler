@@ -14,11 +14,8 @@
 #include "../lib/log/log.h"
 #include "request.h"
 
-void print_url(response_t *response);
-
 void search_and_add_url(url_t *url_parse, sds html, sds_vec_t *job_queue, int_map_t *seen);
 
-//void add_url(sds html, Request* request, sds_vec_t *job_queue, int_map_t *seen);
 void add_to_job_queue(url_t *url_parse, GumboNode *node, sds_vec_t *job_queue, int_map_t *seen);
 
 #endif //COMP30023_2020_PROJECT1_PARSER_H

@@ -1,10 +1,12 @@
-//
-// Created by Haswe on 3/20/2020.
+/**
+ * Module to handle HTTP request
+ * Created by Shuyang Fan on 3/23/2020.
+ */
 
 #include "request.h"
 
 /**
- * Create a HTTP Request
+ * Create a HTTP request
  * @param host
  * @param path
  * @param method
@@ -12,18 +14,23 @@
  * @param body
  * @return
  */
-Request *create_http_request(sds host, sds path, sds method, sds body) {
-    Request *request = malloc(sizeof(Request));
+request_t *create_http_request(sds host, sds path, sds method, sds body) {
+    request_t *request = malloc(sizeof(*request));
     // Return NULL if malloc fails
     if (!request) {
         return NULL;
     }
 
-    // join host and path for url parsing
+    /*
+     * Join host and path for url parsing
+     */
     sds join = sdscatprintf(sdsempty(), "http://%s%s", host, path);
     request->parsed_url = parse_url(join);
     sdsfree(join);
 
+    /*
+     * Return null if parsing url failed
+     */
     if (!request->parsed_url) {
         return NULL;
     }
@@ -33,13 +40,16 @@ Request *create_http_request(sds host, sds path, sds method, sds body) {
     request->method = method;
     request->path = path;
     request->version = sdsnew(HTTP_VERSION);
-    sds_map_t *header = malloc(sizeof(*header));
-    map_init(header);
-    request->header = header;
+
+    /* Allocate space for map */
+    request->header = malloc(sizeof(*request->header));
+    // Return NULL if malloc failed
     if (!request->header) {
         return NULL;
     }
+    map_init(request->header);
 
+    /* Add host to header as requested by HTTP 1.1 */
     add_header(request, "Host", host);
     return request;
 };
@@ -49,7 +59,7 @@ Request *create_http_request(sds host, sds path, sds method, sds body) {
  * @param req
  * @return
  */
-sds HTTPRequestToString(Request *req) {
+sds HTTPRequestToString(request_t *req) {
     sds reqString = sdsempty();
     reqString = sdscatprintf(reqString, "%s %s %s\r\n", req->method, req->path, req->version);
     const char *key;
@@ -70,7 +80,7 @@ sds HTTPRequestToString(Request *req) {
  * @param value
  * @return
  */
-int add_header(Request *req, char *name, char *value) {
+int add_header(request_t *req, char *name, char *value) {
     return map_set(req->header, name, value);
 }
 
@@ -79,7 +89,7 @@ int add_header(Request *req, char *name, char *value) {
  * @param req
  * @return
  */
-int free_request(Request *req) {
+int free_request(request_t *req) {
     if (req->method) {
         sdsfree(req->method);
         req->method = NULL;
@@ -110,5 +120,5 @@ int free_request(Request *req) {
         req->header = NULL;
     }
     free(req);
-    return 0;
+    return SUCCESS;
 }

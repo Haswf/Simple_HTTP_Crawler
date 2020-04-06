@@ -7,6 +7,9 @@
 
 #include "../lib/sds/sds.h"
 
+/**
+ * Structure to store components of a URI
+ */
 typedef struct url {
     sds scheme;
     sds authority;
@@ -15,8 +18,6 @@ typedef struct url {
     sds fragment;
     sds raw;
 } url_t;
-
-// ^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?
 
 int free_url(url_t *url);
 
@@ -29,5 +30,7 @@ sds merge_path(sds base_uri, sds relative_path);
 sds recomposition(url_t *url);
 
 url_t *resolve_reference(sds reference, sds base);
+
+sds safe_sdsdup(sds toCopy);
 
 #endif //COMP30023_2020_PROJECT1_URL_H

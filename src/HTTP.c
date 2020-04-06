@@ -19,7 +19,7 @@
  * @param error
  * @return
  */
-response_t *send_http_request(Request *request, int portno, int *error) {
+response_t *send_http_request(request_t *request, int portno, int *error) {
     // Socket file descriptor
     int sockfd = 0;
     response_t *response = NULL;

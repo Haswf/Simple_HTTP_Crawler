@@ -87,7 +87,7 @@ int main(int agrc, char *argv[]) {
 
 int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *seen, sds_map_t *header) {
     url_t *parse_result = NULL;
-    Request *request = NULL;
+    request_t *request = NULL;
     response_t *response = NULL;
     int error = 0;
     if (!is_valid_url(url)) {
@@ -131,7 +131,7 @@ int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *s
     return error;
 }
 
-void set_headers(Request *request, sds_map_t *header_map) {
+void set_headers(request_t *request, sds_map_t *header_map) {
     sds key;
     map_iter_t iter = map_iter(header_map);
 
@@ -140,7 +140,7 @@ void set_headers(Request *request, sds_map_t *header_map) {
     }
 }
 
-int clean_up(Request *request, response_t *response, url_t *parse_result) {
+int clean_up(request_t *request, response_t *response, url_t *parse_result) {
     if (request) {
         free_request(request);
     }
@@ -422,7 +422,8 @@ bool is_truncated_page(response_t *response) {
     sds content_length = getContentLength(response->header);
     if (content_length != NULL) {
         int actual = sdslen(response->body);
-        int expected = (int) atoi(content_length);
+        int expected = 0;
+        parse_int(content_length, &expected);
         if (expected == actual) {
             return false;
         } else {

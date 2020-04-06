@@ -12,7 +12,7 @@
 #include "config.h"
 #include "url.h"
 
-typedef struct Request {
+typedef struct request {
     sds method;
     sds host;
     sds path;
@@ -20,14 +20,14 @@ typedef struct Request {
     sds version;
     sds body;
     sds_map_t *header;
-} Request;
+} request_t;
 
 
-sds HTTPRequestToString(Request *);
+sds HTTPRequestToString(request_t *);
 
-Request *create_http_request(sds host, sds path, sds method, sds body);
+request_t *create_http_request(sds host, sds path, sds method, sds body);
 
-int add_header(Request *req, char *name, char *value);
+int add_header(request_t *req, char *name, char *value);
 
-int free_request(Request *req);
+int free_request(request_t *req);
 #endif
