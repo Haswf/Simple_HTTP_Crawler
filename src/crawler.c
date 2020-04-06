@@ -80,12 +80,12 @@ int main(int agrc, char *argv[]) {
             map_remove(common_header, AUTHORIZATION);
             total++;
         }
+        sdsfree(url);
         failure += error;
     }
+    map_deinit(common_header);
+    free(common_header);
     deinit(&seen, &job_queue);
-
-    sdsfree(initial);
-
     log_info("Total Success: %d\nTotal Failure: %d\n", total - failure, failure);
 }
 
@@ -121,6 +121,7 @@ int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *s
     }
     // print response header and body for debugging
     print_header(response);
+    print_body(response);
     print_body(response);
 
     if (is_truncated_page(response)) {
@@ -171,7 +172,7 @@ int clean_up(request_t *request, response_t *response, url_t *parse_result) {
 }
 
 int response_to_http_status(response_t *response, url_t *parse_result, sds_vec_t *job_queue, int_map_t *seen) {
-    int error = SUCCESS;
+    int error;
 
     // Success
     if (response->status_code / 100 == 2) {
@@ -380,10 +381,10 @@ int mark_auth_required(sds url, int_map_t *seen) {
  */
 int add_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
     if (abs_url == NULL || seen == NULL || job_queue == NULL) {
-        return 1;
+        return ERROR;
     }
     if (!sdslen(abs_url)) {
-        return 1;
+        return ERROR;
     }
 
     sds key = build_key(abs_url);
@@ -395,7 +396,7 @@ int add_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
         log_trace("\t|+ %s added to the job queue", abs_url);
         return vec_push(job_queue, abs_url);
     }
-    return -1;
+    return ERROR;
 }
 
 /*
@@ -435,13 +436,14 @@ sds build_key(sds url) {
     url_t *result = parse_url(url);
     sds key = sdsempty();
     if (result->scheme) {
-        key = sdscatprintf(key, "%s://", sdsnew(lower(result->scheme)));
+        key = sdscatsds(key, lower(result->scheme));
+        key = sdscat(key, "://");
     }
     if (result->authority) {
-        key = sdscat(key, sdsnew(lower(result->authority)));
+        key = sdscatsds(key, lower(result->authority));
     }
     if (result->path) {
-        key = sdscat(key, sdsnew(result->path));
+        key = sdscatsds(key, result->path);
     } else {
         key = sdscatfmt(key, "/");
     }
@@ -456,7 +458,7 @@ sds build_key(sds url) {
  * @return
  */
 bool url_validation(sds src, sds target) {
-
+    bool result = true;
     if (!src || !target) {
         return false;
     }
@@ -466,6 +468,8 @@ bool url_validation(sds src, sds target) {
     url_t *target_parsed = parse_url(target);
 
     if (!is_valid_url(src) || !is_valid_url(target)) {
+        free_url(src_parsed);
+        free_url(target_parsed);
         return false;
     }
 
@@ -474,9 +478,14 @@ bool url_validation(sds src, sds target) {
      */
     if (SCHEME_POLICY) {
         if (!SCHEME_POLICY || !target_parsed->scheme) {
+            /* clean up */
+            free_url(src_parsed);
+            free_url(target_parsed);
             return false;
         } else if (strcmp(SCHEME_POLICY, target_parsed->scheme)) {
             log_trace("Scheme Validation failed: %s %s", SCHEME_POLICY, target_parsed->scheme);
+            free_url(src_parsed);
+            free_url(target_parsed);
             return false;
         }
     }
@@ -494,6 +503,10 @@ bool url_validation(sds src, sds target) {
         /* Compare if the number of components in host are the same */
         if (src_count != target_count) {
             log_trace("Host Validation failed: %s %s", src, target);
+            sdsfreesplitres(src_token, src_count);
+            sdsfreesplitres(target_token, target_count);
+            free_url(src_parsed);
+            free_url(target_parsed);
             return false;
         }
 
@@ -501,7 +514,7 @@ bool url_validation(sds src, sds target) {
             if (strcmp(src_token[index], target_token[index]) != 0) {
                 log_trace("Host Validation failed: %s %s: %s %s mismatch at index %d", src, target, src_token[index],
                           target_token[index], index);
-                return false;
+                result = false;
             }
         }
         sdsfreesplitres(src_token, src_count);
@@ -511,8 +524,7 @@ bool url_validation(sds src, sds target) {
     /* clean up */
     free_url(src_parsed);
     free_url(target_parsed);
-
-    return true;
+    return result;
 }
 /*
  * Check if a HTTP response has expected content-type, which is defined as
