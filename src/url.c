@@ -1,21 +1,9 @@
-//
-// Created by Haswe on 3/31/2020.
-//
-#include "config.h"
+
+/*
+ * Module to handle process url
+ * written by Shuyang Fan (shuyangf@student.unimelb.edu.au)
+ */
 #include "url.h"
-#include "../lib/log/log.h"
-#include <regex.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-
-#define SCHEME_INDEX 2
-#define AUTHORITY_INDEX 4
-#define PATH_INDEX 5
-#define QUERY_INDEX 7
-#define FRAGMENT_INDEX 8
-
 
 /**
  * Interprets and removes the special "." and ".." complete path segments from a referenced path.
@@ -31,7 +19,9 @@ sds remove_dot_segment(sds input) {
      */
     sds output = sdsempty();
 
-    // While the input buffer is not empty, loop as follows:
+    /*
+     * While the input buffer is not empty, loop as follows:
+     * */
     while (sdslen(input) > 0) {
         char *key = NULL;
         /* If the input buffer begins with a prefix of "../" or "./",

@@ -1,10 +1,9 @@
-// Module to handle connection.
-// Created by Haswe on 3/22/2020.
-//
+/**
+ * Module to handle connection.
+ * Created by Shuyang Fan on 3/22/2020.
+ */
 
 #include "connection.h"
-#include "crawler.h"
-#define h_addr h_addr_list[0] /* for backward compatibility */
 
 /**
  * Establish a connection with a host with given portno
@@ -97,8 +96,6 @@ int close_connection(int sockfd) {
 int receive_from_server(int sockfd, sds *buffer) {
     int total, received, bytes, content_total;
 
-    /* Clear the buffer first */
-//    sdsclear(*buffer);
     char *body_pos = NULL;
     sds_map_t *header_map = NULL;
 
@@ -169,11 +166,23 @@ int receive_from_server(int sockfd, sds *buffer) {
     return SUCCESS;
 }
 
+/**
+ * Set socket timeout. The following code was adapted from Toby's answer to
+ * https://stackoverflow.com/questions/4181784/how-to-set-socket-timeout-in-c-when-making-multiple-connections
+ * @param sockfd socket file descriptor
+ * @return
+ */
 int set_timeout(int sockfd) {
     struct timeval timeout;
+    /*
+     * 10 seconds timeout
+     */
     timeout.tv_sec = 10;
     timeout.tv_usec = 0;
 
+    /*
+     * Receive timeout
+     */
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout,
                    sizeof(timeout)) < 0) {
         log_error("setsockopt failed");
@@ -181,6 +190,9 @@ int set_timeout(int sockfd) {
 
     }
 
+    /*
+     * Send timeout
+    */
     if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (char *) &timeout,
                    sizeof(timeout)) < 0) {
         log_error("setsockopt failed");

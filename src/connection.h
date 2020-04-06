@@ -1,6 +1,8 @@
-//
-// Created by Haswe on 3/22/2020.
-//
+/**
+ * Module to handle connection.
+ * Created by Shuyang Fan on 3/22/2020.
+ */
+
 
 #ifndef COMP30023_2020_PROJECT1_CONNECTION_H
 #define COMP30023_2020_PROJECT1_CONNECTION_H
@@ -14,9 +16,12 @@
 #include <netdb.h>
 #include <time.h>
 #include <stdbool.h>
-#include "../lib/sds/sds.h"
-#include "../lib/log/log.h"
+
+#include "parser.h"
 #include "collection.h"
+#include "config.h"
+
+#define h_addr h_addr_list[0] /* for backward compatibility */
 
 int create_connection(sds host, int portno, int *sockfd);
 

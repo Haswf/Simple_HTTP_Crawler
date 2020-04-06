@@ -9,9 +9,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "connection.h"
 #include "collection.h"
-#include <ctype.h>
+#include "config.h"
 
 typedef struct response {
     sds version;

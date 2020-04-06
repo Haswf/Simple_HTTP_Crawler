@@ -5,11 +5,14 @@
 #ifndef COMP30023_2020_PROJECT1_CRAWLER_H
 #define COMP30023_2020_PROJECT1_CRAWLER_H
 
+#include <stdbool.h>
+
+#include "request.h"
+#include "response.h"
 #include "HTTP.h"
 #include "collection.h"
 #include "parser.h"
 #include "config.h"
-#include <stdbool.h>
 
 int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *seen, sds_map_t *header);
 
@@ -22,8 +25,6 @@ int mark_failure(sds url, int_map_t *seen);
 bool is_truncated_page(response_t *response);
 
 int add_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue);
-
-int add_absolute_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue);
 
 bool is_valid_url(sds url);
 
@@ -40,16 +41,6 @@ int redirection_handler(url_t *url, response_t *response, sds_vec_t *job_queue, 
 int retry_handler(url_t *url, response_t *response, sds_vec_t *job_queue, int_map_t *seen);
 
 sds build_key(sds url);
-
-sds getLocation(sds_map_t *header_map);
-
-sds getContentLocation(sds_map_t *header_map);
-
-sds getContentLength(sds_map_t *header_map);
-
-sds getContentType(sds_map_t *header_map);
-
-int compare_scheme(url_t *url1, url_t *url2);
 
 int response_to_http_status(response_t *response, url_t *parse_result, sds_vec_t *job_queue, int_map_t *seen);
 

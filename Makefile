@@ -34,4 +34,4 @@ $(EXE): $(OBJ)
 # Perform clean
 clean:
 	find . -name '*.o' -delete
-	rm $(EXE)
+	rm -f $(EXE)

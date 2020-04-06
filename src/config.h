@@ -5,6 +5,7 @@
 
 #ifndef COMP30023_2020_PROJECT1_CONFIG_H
 #define COMP30023_2020_PROJECT1_CONFIG_H
+#include "../lib/log/log.h"
 
 #define PORT 80
 
@@ -41,14 +42,14 @@
  */
 #define CONTENT_LENGTH_POLICY STRICT
 /* Options
- * Strict
+ * STRICT
  * ALL
  * */
 #define STRICT 1
 
 
 /* Scheme Policy */
-#define SCHEME_POLICY ALL
+#define SCHEME_POLICY HTTP_ONLY
 #define HTTP_ONLY "http"
 #define ALL NULL
 

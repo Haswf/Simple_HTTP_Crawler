@@ -4,7 +4,6 @@
  */
 
 #include "response.h"
-#include "config.h"
 #include "HTTP.h"
 
 /**

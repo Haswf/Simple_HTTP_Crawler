@@ -7,19 +7,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "request.h"
+#include <stdbool.h>
+#include <errno.h>
+#include "connection.h"
 #include "response.h"
+#include "request.h"
+#include "config.h"
 
 response_t *send_http_request(request_t *request, int portno, int *status);
-
-char *locate_body(char *buffer);
-
-sds_map_t *extract_header(char *buffer);
-
-bool isHTML(sds_map_t *header_map);
-
-bool isBufferSufficient(sds_map_t *header_map);
-
-bool parse_int(sds string, int *parse_result);
 
 #endif //COMP30023_2020_PROJECT1_HTTP_H

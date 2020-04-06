@@ -5,7 +5,19 @@
 #ifndef COMP30023_2020_PROJECT1_URL_H
 #define COMP30023_2020_PROJECT1_URL_H
 
-#include "../lib/sds/sds.h"
+#define SCHEME_INDEX 2
+#define AUTHORITY_INDEX 4
+#define PATH_INDEX 5
+#define QUERY_INDEX 7
+#define FRAGMENT_INDEX 8
+
+#include <regex.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
+#include "../lib/log/log.h"
+#include "config.h"
+#include "collection.h"
 
 /**
  * Structure to store components of a URI
@@ -18,6 +30,7 @@ typedef struct url {
     sds fragment;
     sds raw;
 } url_t;
+
 
 int free_url(url_t *url);
 
@@ -32,5 +45,7 @@ sds recomposition(url_t *url);
 url_t *resolve_reference(sds reference, sds base);
 
 sds safe_sdsdup(sds toCopy);
+
+bool is_valid_url(sds url);
 
 #endif //COMP30023_2020_PROJECT1_URL_H

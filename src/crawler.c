@@ -8,7 +8,6 @@
 
 /**
  * Initialise a queue and a map for the crawler
- * I know the use of double pointer is a bit ugly...
  * @param seen
  * @param job_queue
  * @return
@@ -22,6 +21,12 @@ int init(int_map_t **seen, sds_vec_t **job_queue) {
     return *job_queue && *seen;
 }
 
+/**
+ *
+ * @param seen
+ * @param job_queue
+ * @return
+ */
 int deinit(int_map_t **seen, sds_vec_t **job_queue) {
     map_deinit(*seen);
     free(*seen);
@@ -102,7 +107,6 @@ int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *s
         parse_result->raw = recomposition(parse_result);
         url = parse_result->raw;
     }
-    // Set path to / if none is given
     log_info("Fetching: %s", url);
     printf("%s\n", url);
 
@@ -131,6 +135,11 @@ int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *s
     return error;
 }
 
+/**
+ * Add headers to a request
+ * @param request
+ * @param header_map
+ */
 void set_headers(request_t *request, sds_map_t *header_map) {
     sds key;
     map_iter_t iter = map_iter(header_map);
@@ -140,6 +149,14 @@ void set_headers(request_t *request, sds_map_t *header_map) {
     }
 }
 
+/**
+ * Clean up memory upon fetching a page
+ * This function can be called anywhere in the do_crawler in case of error
+ * @param request
+ * @param response
+ * @param parse_result
+ * @return
+ */
 int clean_up(request_t *request, response_t *response, url_t *parse_result) {
     if (request) {
         free_request(request);
@@ -150,11 +167,11 @@ int clean_up(request_t *request, response_t *response, url_t *parse_result) {
     if (parse_result) {
         free_url(parse_result);
     }
-    return 1;
+    return ERROR;
 }
 
 int response_to_http_status(response_t *response, url_t *parse_result, sds_vec_t *job_queue, int_map_t *seen) {
-    int error = 0;
+    int error = SUCCESS;
 
     // Success
     if (response->status_code / 100 == 2) {
@@ -172,10 +189,6 @@ int response_to_http_status(response_t *response, url_t *parse_result, sds_vec_t
             response->status_code == URI_TOO_LONG) {
             search_and_add_url(parse_result, response->body, job_queue, seen);
             error = failure_handler(parse_result, response, seen);
-//        } else if (response->status_code == URI_TOO_LONG) {
-//            search_and_add_url(parse_result, response->body, job_queue, seen);
-////            mark_post(parse_result, response, seen);
-////            vec_push(job_queue, sdsnew(parse_result->raw));
         } else if (response->status_code == UNAUTHORISED) {
             error = retry_handler(parse_result, response, job_queue, seen);
             mark_auth_required(parse_result->raw, seen);
@@ -205,6 +218,14 @@ int response_to_http_status(response_t *response, url_t *parse_result, sds_vec_t
     return error;
 }
 
+/**
+ * handler for success response
+ * The url will be marked as visited to avoid being fetched again
+ * @param url
+ * @param response
+ * @param seen
+ * @return
+ */
 int success_handler(url_t *url, response_t *response, int_map_t *seen) {
     if (content_type_validation(response->header)) {
         mark_visited(url->raw, seen);
@@ -219,64 +240,39 @@ int success_handler(url_t *url, response_t *response, int_map_t *seen) {
         }
         log_info("\t|- succeeded\t%d", response->status_code);
     }
-    return 0;
+    return SUCCESS;
 }
 
+/**
+ * handler for redirection response.
+ * The url will be marked as visited to avoid being fetched again
+ * if Location header is presented, add redirection path to the job queue.
+ * @param url
+ * @param response
+ * @param job_queue
+ * @param seen
+ * @return
+ */
 int redirection_handler(url_t *url, response_t *response, sds_vec_t *job_queue, int_map_t *seen) {
-    sds key = build_key(url->raw);
     mark_visited(url->raw, seen);
-    sdsfree(key);
     log_info("\t|- succeeded\t%d", response->status_code);
 
     sds redirect_to = getLocation(response->header);
     if (redirect_to != NULL && url_validation(url->raw, redirect_to)) {
         log_info("\t|- Redirect to %s", redirect_to);
-        // TODO: check if redirected url follows rules in spec
         add_to_queue(redirect_to, seen, job_queue);
-    } else {
-        log_info("\t|- Redirection URL is not supported %s", redirect_to);
     }
-    return 0;
+    return SUCCESS;
 }
 
-sds getLocation(sds_map_t *header_map) {
-    sds *redirect_to = (sds *) map_get(header_map, LOCATION);
-    if (redirect_to) {
-        return *redirect_to;
-    } else {
-        return NULL;
-    }
-}
-
-
-sds getContentLocation(sds_map_t *header_map) {
-    sds *redirect_to = (sds *) map_get(header_map, CONTENT_LOCATION);
-    if (redirect_to) {
-        return *redirect_to;
-    } else {
-        return NULL;
-    }
-}
-
-sds getContentLength(sds_map_t *header_map) {
-    sds *content_length = (sds *) map_get(header_map, CONTENT_LENGTH);
-    if (content_length) {
-        return *content_length;
-    } else {
-        return NULL;
-    }
-}
-
-sds getContentType(sds_map_t *header_map) {
-    sds *type = (sds *) map_get(header_map, CONTENT_TYPE);
-    if (type) {
-        return *type;
-    } else {
-        return NULL;
-    }
-}
-
-
+/**
+ * handler for permanent failure.
+ * This will marked an url as failure.
+ * @param url
+ * @param response
+ * @param seen
+ * @return
+ */
 int failure_handler(url_t *url, response_t *response, int_map_t *seen) {
     mark_failure(url->raw, seen);
     if (response) {
@@ -288,7 +284,9 @@ int failure_handler(url_t *url, response_t *response, int_map_t *seen) {
 }
 
 /**
- *
+ * Handler for temoperatoty failure.
+ * The status of the url will be changed to retry
+ * and will be added to the job queue again.
  * @param url
  * @param response
  * @param job_queue
@@ -308,34 +306,16 @@ int retry_handler(url_t *url, response_t *response, sds_vec_t *job_queue, int_ma
         vec_push(job_queue, sdsdup(url->raw));
         log_info("\t|- failed\t\t%d\tRetry scheduled", response->status_code);
     }
-    return 1;
+    return ERROR;
 }
 
 /**
- *
- * @param url
- * @param response
- * @param job_queue
+ * Change the status of an url in "seen" map
  * @param seen
+ * @param key
+ * @param value
  * @return
  */
-int authorization_handler(url_t *url, response_t *response, sds_vec_t *job_queue, int_map_t *seen) {
-    sds key = build_key(url->raw);
-    int *status = map_get(seen, key);
-    sdsfree(key);
-
-    // If a page has been fetched and failed
-    if (status && *status == UNAUTHORISED) {
-        log_info("\t|- Retry failed\t\t%d\t No further retry will be attempted",
-                 response->status_code);
-    } else {
-        mark_retry(sdsnew(url->raw), seen);
-        vec_push(job_queue, sdsdup(url->raw));
-        log_info("\t|- failed\t\t%d\tRetry scheduled", response->status_code);
-    }
-    return 1;
-}
-
 int seen_set(int_map_t *seen, sds key, int value) {
     sds _key = build_key(key);
     int result = map_set(seen, _key, value);
@@ -344,7 +324,8 @@ int seen_set(int_map_t *seen, sds key, int value) {
 }
 
 /**
- * Mark an url as visited. There will add its visit count by 1.
+ * Mark an url as visited. Unless overwritten
+ * this url won't be fetched again in the future.
  * @param url
  * @param seen
  * @return
@@ -417,7 +398,11 @@ int add_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
     return -1;
 }
 
-
+/*
+ * Check if a page is truncated by comparing content-length
+ * actual byte received. In case of missing content-length header,
+ * the return result is defined in CONTENT_LENGTH_POLICY in config.h
+ */
 bool is_truncated_page(response_t *response) {
     sds content_length = getContentLength(response->header);
     if (content_length != NULL) {
@@ -488,7 +473,9 @@ bool url_validation(sds src, sds target) {
      * Validate scheme if SCHEME_POLICY has been enabled
      */
     if (SCHEME_POLICY) {
-        if (strcmp(SCHEME_POLICY, target_parsed->scheme)) {
+        if (!SCHEME_POLICY || !target_parsed->scheme) {
+            return false;
+        } else if (strcmp(SCHEME_POLICY, target_parsed->scheme)) {
             log_trace("Scheme Validation failed: %s %s", SCHEME_POLICY, target_parsed->scheme);
             return false;
         }
@@ -527,11 +514,9 @@ bool url_validation(sds src, sds target) {
 
     return true;
 }
-
-/**
- *
- * @param header_map
- * @return
+/*
+ * Check if a HTTP response has expected content-type, which is defined as
+ * ALLOWED_CONTENT_TYPE in config.h
  */
 bool content_type_validation(sds_map_t *header_map) {
     // Retrieve content type from map
@@ -547,20 +532,4 @@ bool content_type_validation(sds_map_t *header_map) {
     }
     log_info("\t|- Content type validation failed: expected: %s actual: %s", ALLOWED_CONTENT_TYPE, type);
     return false;
-}
-
-/**
- * Compares the schemes of two urls
- * @param url1
- * @param url2
- * @return
- */
-int compare_scheme(url_t *url1, url_t *url2) {
-    if (!url1 || !url2) {
-        return 1;
-    }
-    if (url1->scheme && url2->scheme) {
-        return sdscmp(url1->scheme, url2->scheme);
-    }
-    return 1;
 }
