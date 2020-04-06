@@ -166,7 +166,7 @@ bool isHTML(sds_map_t *header_map) {
     sds type = getContentType(header_map);
     // if content type header is presented
     if (type) {
-        if (!strstr(type, HTML_CONTENT_TYPE)) {
+        if (!strstr(type, HTML_ONLY)) {
             log_error("\t|- Aborted: Content type is not HTML");
             return false;
         }

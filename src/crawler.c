@@ -50,7 +50,7 @@ int main(int agrc, char *argv[]) {
 
     map_set(common_header, "Connection", CONNECTION);
     map_set(common_header, "User-Agent", USER_AGENT);
-    map_set(common_header, "Accept", HTML_CONTENT_TYPE);
+    map_set(common_header, "Accept", HTML_ONLY);
 
     sds initial = sdsnew(argv[1]);
     add_to_queue(initial, seen, job_queue);
@@ -432,7 +432,11 @@ bool is_truncated_page(response_t *response) {
         }
     }
     // Any response with no content-length header with be discarded
-    return true;
+    if (CONTENT_LENGTH_POLICY) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 /**
@@ -480,54 +484,68 @@ bool url_validation(sds src, sds target) {
         return false;
     }
 
-    sds src_host = sdsnew(src_parsed->authority);
-    sds target_host = sdsnew(target_parsed->authority);
-
-//    // TODO: Only parses pages that use http
-//    if (compare_scheme(src_parsed, target_parsed)) {
-//        log_trace("Scheme Validation failed: %s %s", src_parsed->scheme, target_parsed->scheme);
-//        return false;
-//    }
-
-    free_url(src_parsed);
-    free_url(target_parsed);
-
-    sdstrim(src_host, " \n\r");
-    sdstrim(target_host, " \n\r");
-
-    sds *src_token = sdssplitlen(src_host, sdslen(src_host), ".", 1, &src_count);
-    sds *target_token = sdssplitlen(target_host, sdslen(target_host), ".", 1, &target_count);
-
-    if (src_count != target_count) {
-        log_trace("Host Validation failed: %s %s", src, target);
-        return false;
-    }
-
-    for (int index = 1; index < src_count; index++) {
-        if (strcmp(src_token[index], target_token[index]) != 0) {
-            log_trace("Host Validation failed: %s %s: %s %s mismatch at index %d", src, target, src_token[index],
-                      target_token[index], index);
+    /*
+     * Validate scheme if SCHEME_POLICY has been enabled
+     */
+    if (SCHEME_POLICY) {
+        if (strcmp(SCHEME_POLICY, target_parsed->scheme)) {
+            log_trace("Scheme Validation failed: %s %s", SCHEME_POLICY, target_parsed->scheme);
             return false;
         }
     }
-    sdsfreesplitres(src_token, src_count);
-    sdsfreesplitres(target_token, target_count);
+    /*
+     * Validate domain if CROSS_DOMAIN_POLICY has been enabled
+     */
+    if (CROSS_DOMAIN_POLICY) {
+        sdstrim(src_parsed->authority, " \n\r");
+        sdstrim(target_parsed->authority, " \n\r");
+
+        sds *src_token = sdssplitlen(src_parsed->authority, sdslen(src_parsed->authority), ".", 1, &src_count);
+        sds *target_token = sdssplitlen(target_parsed->authority, sdslen(target_parsed->authority), ".", 1,
+                                        &target_count);
+
+        /* Compare if the number of components in host are the same */
+        if (src_count != target_count) {
+            log_trace("Host Validation failed: %s %s", src, target);
+            return false;
+        }
+
+        for (int index = CROSS_DOMAIN_POLICY; index < src_count; index++) {
+            if (strcmp(src_token[index], target_token[index]) != 0) {
+                log_trace("Host Validation failed: %s %s: %s %s mismatch at index %d", src, target, src_token[index],
+                          target_token[index], index);
+                return false;
+            }
+        }
+        sdsfreesplitres(src_token, src_count);
+        sdsfreesplitres(target_token, target_count);
+    }
+
+    /* clean up */
+    free_url(src_parsed);
+    free_url(target_parsed);
+
     return true;
 }
 
+/**
+ *
+ * @param header_map
+ * @return
+ */
 bool content_type_validation(sds_map_t *header_map) {
     // Retrieve content type from map
     sds type = getContentType(header_map);
-    // if content type header is not presented
+    // if content type header is not presented, return false
     if (type == NULL) {
         log_info("\t|- Content type validation failed: Content-Type is missing");
         return false;
     }
-    // if text/html is found in content-type header
-    if (strstr(type, HTML_CONTENT_TYPE)) {
+    /* Compare if MIME header is expected CONTENT_TYPE */
+    if (strstr(type, ALLOWED_CONTENT_TYPE)) {
         return true;
     }
-    log_info("\t|- Content type validation failed: expected: %s actual: %s", HTML_CONTENT_TYPE, type);
+    log_info("\t|- Content type validation failed: expected: %s actual: %s", ALLOWED_CONTENT_TYPE, type);
     return false;
 }
 

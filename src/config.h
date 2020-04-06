@@ -7,6 +7,12 @@
 #define COMP30023_2020_PROJECT1_CONFIG_H
 
 #define PORT 80
+
+
+/**
+ * Configuration
+ */
+
 /**
  * Log level
  * LOG_ERROR　ｗill print all error to stderr
@@ -14,19 +20,38 @@
  * LOG_DEBUG will print more details, etc found urls to stderr.
  * LOG_TRACE will print everything including request and response to stderr.
  */
-#define LOG_LEVEL LOG_TRACE
+#define LOG_LEVEL LOG_DEBUG
 
-/**
- * The length of "/r/n/r/n"
- */
-#define HEADER_BODY_SEPARATOR_SIZE 4
+/* The size of response buffer. No server response will be longer than 100,000 bytes */
+#define RESPONSE_BUFFER 100001
 
+/* Allowed content type */
+#define ALLOWED_CONTENT_TYPE HTML_ONLY
+/* Options */
+#define HTML_ONLY "text/html"
+
+/* Cross domain fetching */
+#define CROSS_DOMAIN_POLICY SECOND_LEVEL_DOMAIN
+/* Options */
+#define SAME_DOMAIN 0
+#define SECOND_LEVEL_DOMAIN 1
 
 /*
- * The size of response buffer.
- * No server response will be longer than 100,000 bytes
+ * Content-length validation
  */
-#define RESPONSE_BUFFER 100001
+#define CONTENT_LENGTH_POLICY STRICT
+/* Options
+ * Strict
+ * ALL
+ * */
+#define STRICT 1
+
+
+/* Scheme Policy */
+#define SCHEME_POLICY ALL
+#define HTTP_ONLY "http"
+#define ALL NULL
+
 
 /**
  * Flag indicating what to do next with a url
@@ -53,11 +78,16 @@
 #define SERVICE_UNAVAILABLE 503
 #define GATEWAY_TIMEOUT 504
 
+
+/*
+ * MIME types
+ */
+
+
 /**
  * HTTP headers
  */
 #define CONTENT_TYPE "content-type"
-#define HTML_CONTENT_TYPE "text/html"
 #define CONTENT_LENGTH "content-length"
 #define CONTENT_LOCATION "content-location"
 #define AUTHORIZATION "authorization"
@@ -72,4 +102,7 @@
 
 #define ERROR 1
 #define SUCCESS 0
+
+/* The length of "/r/n/r/n" */
+#define HEADER_BODY_SEPARATOR_SIZE 4
 #endif //COMP30023_2020_PROJECT1_CONFIG_H
