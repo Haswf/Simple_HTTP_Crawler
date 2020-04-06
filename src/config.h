@@ -40,7 +40,7 @@
 /*
  * Content-length validation
  */
-#define CONTENT_LENGTH_POLICY ALL
+#define CONTENT_LENGTH_POLICY STRICT
 /* Options
  * STRICT
  * ALL

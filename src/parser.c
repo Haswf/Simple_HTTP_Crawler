@@ -54,8 +54,6 @@ void add_to_job_queue(url_t *url_parse, GumboNode *node, sds_vec_t *job_queue, i
          */
         if (is_valid_url(url) && url_validation(url_parse->raw, url)) {
             add_to_queue(url, seen, job_queue);
-        } else {
-            sdsfree(url);
         }
     }
     GumboVector *children = &node->v.element.children;
@@ -178,9 +176,9 @@ sds_map_t *extract_header(char *buffer) {
             sdstrim(value, " \n");
 
             // Add header to map
-            map_set(map, lower(name), sdsdup(value));
+            map_set(map, lower(name), value);
             sdsfree(name);
-            sdsfree(value);
+//            sdsfree(value);
         }
     }
     sdsfreesplitres(lines, header_count);

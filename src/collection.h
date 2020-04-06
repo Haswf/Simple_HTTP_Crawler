@@ -35,6 +35,4 @@ typedef vec_t(sds) sds_vec_t;
 /* Map<String, String> */
 typedef map_t(sds) sds_map_t;
 
-void free_map(sds_map_t **map);
-
 #endif //COMP30023_2020_PROJECT1_COLLECTION_H

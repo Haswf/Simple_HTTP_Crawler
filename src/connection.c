@@ -102,6 +102,9 @@ int receive_from_server(int sockfd, sds *buffer) {
     /* Leave one byte to save new line character */
     total = RESPONSE_BUFFER - 1;
     received = 0;
+    content_total = 0;
+    bytes = 0;
+    content_total = 0;
 
     /* if we have received the content length header or not */
     bool has_content_length = false;
@@ -129,7 +132,6 @@ int receive_from_server(int sockfd, sds *buffer) {
              * Check if the MIME type is HTML
              * */
             if (!isBufferSufficient(header_map) || !isHTML(header_map)) {
-                free_map(&header_map);
                 return ERROR;
             };
             /* Retrieve content length from header */
@@ -158,7 +160,7 @@ int receive_from_server(int sockfd, sds *buffer) {
      * Clean up
      */
     if (header_map) {
-        free_map(&header_map);
+        map_deinit(header_map);
         free(header_map);
     }
     return SUCCESS;

@@ -60,6 +60,7 @@ response_t *parse_response(sds *buffer) {
             // Add header to map
             map_set(response->header, lower(name), value);
             sdsfree(name);
+//            sdsfree(value);
         }
     }
     /*
@@ -103,8 +104,9 @@ void free_response(response_t *response) {
     response->reason_phrase = NULL;
     sdsfree(response->body);
     response->body = NULL;
-//    map_deinit(response->header);
-    free_map(&response->header);
+    map_deinit(response->header);
+    free(response->header);
+    response->header = NULL;
     free(response);
 }
 
@@ -119,3 +121,4 @@ sds lower(sds string) {
     }
     return string;
 }
+

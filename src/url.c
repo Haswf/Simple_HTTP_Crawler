@@ -226,7 +226,7 @@ url_t *parse_url(sds text) {
     /*
      * Save raw url
      */
-    parsed->raw = sdsdup(text);
+    parsed->raw = sdsnew(text);
     regfree(&compiled);
     return parsed;
 }
@@ -265,14 +265,12 @@ int free_url(url_t *url) {
  * @return 0 for doesn't look an url, 1 for looks like an url
  */
 bool is_valid_url(sds url) {
-    bool result = true;
     url_t *parsed = parse_url(url);
     // According to RFC3986, an URI must have both scheme and authority
     if (!parsed->scheme || !parsed->authority) {
-        result = false;
+        return false;
     }
-    free_url(parsed);
-    return result;
+    return true;
 }
 
 /**
@@ -373,8 +371,8 @@ url_t *resolve_reference(sds reference, sds base) {
     target->raw = recomposition(target);
 
     /* Clean up*/
-    free_url(reference_parsed);
-    free_url(base_parsed);
+    free(reference_parsed);
+    free(base_parsed);
     return target;
 
 }
