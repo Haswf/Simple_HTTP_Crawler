@@ -45,6 +45,7 @@ void add_to_job_queue(url_t *url_parse, GumboNode *node, sds_vec_t *job_queue, i
          */
         if (!is_valid_url(url)) {
             url_t *resolved = resolve_reference(url, url_parse->raw);
+            sdsfree(url);
             url = sdsnew(resolved->raw);
             free_url(resolved);
         }
@@ -53,8 +54,9 @@ void add_to_job_queue(url_t *url_parse, GumboNode *node, sds_vec_t *job_queue, i
          * it meet spec's requirement for most, add the resolved path to job queue
          */
         if (is_valid_url(url) && url_validation(url_parse->raw, url)) {
-            add_to_queue(url, seen, job_queue);
+            add_to_queue(sdsdup(url), seen, job_queue);
         }
+        sdsfree(url);
     }
     GumboVector *children = &node->v.element.children;
     /**

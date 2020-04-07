@@ -395,6 +395,8 @@ int add_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
     if (status == NULL || *status == RETRY_FLAG) {
         log_trace("\t|+ %s added to the job queue", abs_url);
         return vec_push(job_queue, abs_url);
+    } else {
+        sdsfree(abs_url);
     }
     return -1;
 }

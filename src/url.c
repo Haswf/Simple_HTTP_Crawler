@@ -52,7 +52,9 @@ sds remove_dot_segment(sds input) {
          */
         if (strstr(input, key = "/../") == input || strstr(input, key = "/..") == input) {
             sdsrange(input, strlen(key), sdslen(input));
-            input = sdscatprintf(sdsempty(), "/%s", input);
+            sds sdsjoint = sdscatprintf(sdsempty(), "/%s", input);
+            sdsfree(input);
+            input = sdsjoint;
             // If the right most slash is at the start, i.e. output buffer only has one path segment
             if (sdslen(output)) {
                 char *preceding_slash = strrchr(output, '/');
@@ -113,6 +115,7 @@ sds remove_dot_segment(sds input) {
  * @return
  */
 sds merge_path(sds base_uri, sds relative_path) {
+    sds merged = NULL;
     url_t *parsed = parse_url(base_uri);
     /*
      * If the base URI has a defined authority component and an empty
@@ -120,8 +123,7 @@ sds merge_path(sds base_uri, sds relative_path) {
       reference's path; otherwise,
      */
     if (parsed->authority && !parsed->path) {
-        free_url(parsed);
-        return sdscatprintf(sdsempty(), "/%s", relative_path);
+        merged = sdscatprintf(sdsempty(), "/%s", relative_path);
     }
 
         /*
@@ -134,15 +136,14 @@ sds merge_path(sds base_uri, sds relative_path) {
     else {
         char *right_most_slash = strrchr(parsed->path, '/');
         if (right_most_slash) {
-            sds base_path = sdscatlen(sdsempty(), parsed->path, sdslen(parsed->path) - strlen(right_most_slash) + 1);
-            free_url(parsed);
-            return sdscat(base_path, relative_path);
+            sds base_path = sdscpylen(sdsempty(), parsed->path, sdslen(parsed->path) - strlen(right_most_slash) + 1);
+            merged = sdscatsds(base_path, relative_path);
         } else {
-            free_url(parsed);
-            return relative_path;
+            merged = relative_path;
         }
     }
-
+    free_url(parsed);
+    return merged;
 }
 
 /**
