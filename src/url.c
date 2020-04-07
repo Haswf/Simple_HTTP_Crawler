@@ -265,12 +265,14 @@ int free_url(url_t *url) {
  * @return 0 for doesn't look an url, 1 for looks like an url
  */
 bool is_valid_url(sds url) {
+    bool result = true;
     url_t *parsed = parse_url(url);
     // According to RFC3986, an URI must have both scheme and authority
     if (!parsed->scheme || !parsed->authority) {
-        return false;
+        result = false;
     }
-    return true;
+    free_url(parsed);
+    return result;
 }
 
 /**

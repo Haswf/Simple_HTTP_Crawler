@@ -456,28 +456,37 @@ sds build_key(sds url) {
  * @return
  */
 bool url_validation(sds src, sds target) {
+    bool result = true;
 
     if (!src || !target) {
-        return false;
+        result = false;
+        return result;
+    }
+
+    if (!is_valid_url(src) || !is_valid_url(target)) {
+        result = false;
+        return result;
     }
 
     int src_count, target_count;
     url_t *src_parsed = parse_url(src);
     url_t *target_parsed = parse_url(target);
 
-    if (!is_valid_url(src) || !is_valid_url(target)) {
-        return false;
-    }
-
     /*
      * Validate scheme if SCHEME_POLICY has been enabled
      */
     if (SCHEME_POLICY) {
         if (!SCHEME_POLICY || !target_parsed->scheme) {
-            return false;
+            result = false;
+            free_url(src_parsed);
+            free_url(target_parsed);
+            return result;
         } else if (strcmp(SCHEME_POLICY, target_parsed->scheme)) {
+            result = false;
             log_trace("Scheme Validation failed: %s %s", SCHEME_POLICY, target_parsed->scheme);
-            return false;
+            free_url(src_parsed);
+            free_url(target_parsed);
+            return result;
         }
     }
     /*
@@ -494,14 +503,16 @@ bool url_validation(sds src, sds target) {
         /* Compare if the number of components in host are the same */
         if (src_count != target_count) {
             log_trace("Host Validation failed: %s %s", src, target);
-            return false;
-        }
-
-        for (int index = CROSS_DOMAIN_POLICY; index < src_count; index++) {
-            if (strcmp(src_token[index], target_token[index]) != 0) {
-                log_trace("Host Validation failed: %s %s: %s %s mismatch at index %d", src, target, src_token[index],
-                          target_token[index], index);
-                return false;
+            result = false;
+        } else {
+            for (int index = CROSS_DOMAIN_POLICY; index < src_count; index++) {
+                if (strcmp(src_token[index], target_token[index]) != 0) {
+                    log_trace("Host Validation failed: %s %s: %s %s mismatch at index %d", src, target,
+                              src_token[index],
+                              target_token[index], index);
+                    result = false;
+                    break;
+                }
             }
         }
         sdsfreesplitres(src_token, src_count);
@@ -512,7 +523,7 @@ bool url_validation(sds src, sds target) {
     free_url(src_parsed);
     free_url(target_parsed);
 
-    return true;
+    return result;
 }
 /*
  * Check if a HTTP response has expected content-type, which is defined as
