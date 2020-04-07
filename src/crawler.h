@@ -26,8 +26,6 @@ bool is_truncated_page(response_t *response);
 
 int add_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue);
 
-bool is_valid_url(sds url);
-
 bool url_validation(sds src, sds target);
 
 bool content_type_validation(sds_map_t *header_map);
@@ -48,10 +46,13 @@ int clean_up(request_t *request, response_t *response, url_t *parse_result);
 
 void set_headers(request_t *request, sds_map_t *header_map);
 
-int deinit(int_map_t **seen, sds_vec_t **job_queue);
+int deinit(int_map_t **seen, sds_vec_t **job_queue, sds_map_t **common_header);
 
 int mark_post(sds url, int_map_t *seen);
 
 int mark_auth_required(sds url, int_map_t *seen);
+
+int init(int_map_t **seen, sds_vec_t **job_queue, sds_map_t **common_header);
+
 
 #endif //COMP30023_2020_PROJECT1_CRAWLER_H

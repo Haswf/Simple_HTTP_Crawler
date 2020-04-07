@@ -12,10 +12,12 @@
  * @param job_queue
  * @return
  */
-int init(int_map_t **seen, sds_vec_t **job_queue) {
+int init(int_map_t **seen, sds_vec_t **job_queue, sds_map_t **common_header) {
     log_set_level(LOG_LEVEL);
     *seen = malloc(sizeof(**seen));
     map_init(*seen);
+    *common_header = malloc(sizeof(**common_header));
+    map_init(*common_header);
     *job_queue = malloc(sizeof(**job_queue));
     vec_init(*job_queue);
     return *job_queue && *seen;
@@ -27,10 +29,12 @@ int init(int_map_t **seen, sds_vec_t **job_queue) {
  * @param job_queue
  * @return
  */
-int deinit(int_map_t **seen, sds_vec_t **job_queue) {
+int deinit(int_map_t **seen, sds_vec_t **job_queue, sds_map_t **common_header) {
     map_deinit(*seen);
     free(*seen);
     *seen = NULL;
+    free_sds_map(common_header);
+    *common_header = NULL;
     vec_deinit(*job_queue);
     free(*job_queue);
     *job_queue = NULL;
@@ -40,6 +44,7 @@ int deinit(int_map_t **seen, sds_vec_t **job_queue) {
 int main(int agrc, char *argv[]) {
     int_map_t *seen = NULL;
     sds_vec_t *job_queue = NULL;
+    sds_map_t *common_header = NULL;
 
     if (agrc < 1) {
         printf("Usage: crawler [URL]");
@@ -48,14 +53,11 @@ int main(int agrc, char *argv[]) {
     int total = 0;
     int failure = 0;
 
-    init(&seen, &job_queue);
+    init(&seen, &job_queue, &common_header);
 
-    sds_map_t *common_header = malloc(sizeof(*common_header));
-    map_init(common_header);
-
-    map_set(common_header, "Connection", CONNECTION);
-    map_set(common_header, "User-Agent", USER_AGENT);
-    map_set(common_header, "Accept", HTML_ONLY);
+    map_set(common_header, "Connection", sdsnew(CONNECTION));
+    map_set(common_header, "User-Agent", sdsnew(USER_AGENT));
+    map_set(common_header, "Accept", sdsnew(HTML_ONLY));
 
     sds initial = sdsnew(argv[1]);
     add_to_queue(initial, seen, job_queue);
@@ -83,9 +85,7 @@ int main(int agrc, char *argv[]) {
         sdsfree(url);
         failure += error;
     }
-    deinit(&seen, &job_queue);
-    map_deinit(common_header);
-    free(common_header);
+    deinit(&seen, &job_queue, &common_header);
 
     log_info("Total Success: %d\nTotal Failure: %d\n", total - failure, failure);
 }
@@ -173,7 +173,7 @@ int clean_up(request_t *request, response_t *response, url_t *parse_result) {
 }
 
 int response_to_http_status(response_t *response, url_t *parse_result, sds_vec_t *job_queue, int_map_t *seen) {
-    int error = SUCCESS;
+    int error;
 
     // Success
     if (response->status_code / 100 == 2) {
