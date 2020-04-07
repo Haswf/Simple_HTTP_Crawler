@@ -31,7 +31,7 @@ int deinit(int_map_t **seen, sds_vec_t **job_queue) {
     map_deinit(*seen);
     free(*seen);
     *seen = NULL;
-    vec_init(*job_queue);
+    vec_deinit(*job_queue);
     free(*job_queue);
     *job_queue = NULL;
     return !(*job_queue) && !(*seen);
@@ -393,13 +393,13 @@ int add_to_queue(sds abs_url, int_map_t *seen, sds_vec_t *job_queue) {
     sdsfree(key);
 
     sdstrim(abs_url, " \n");
-    if (status == NULL || *status == RETRY_FLAG) {
+    if (status == NULL || *status == RETRY_FLAG || *status == AUTH_FLAG) {
         log_trace("\t|+ %s added to the job queue", abs_url);
         return vec_push(job_queue, abs_url);
     } else {
         sdsfree(abs_url);
+        return ERROR;
     }
-    return -1;
 }
 
 /*
