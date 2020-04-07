@@ -118,6 +118,9 @@ sds remove_dot_segment(sds input) {
  * @return
  */
 sds merge_path(sds base_uri, sds relative_path) {
+    base_uri = sdsdup(base_uri);
+    relative_path = sdsdup(relative_path);
+
     sds merged = NULL;
     url_t *parsed = parse_url(base_uri);
     /*
@@ -141,11 +144,13 @@ sds merge_path(sds base_uri, sds relative_path) {
         if (right_most_slash) {
             sds base_path = sdsdup(parsed->path);
             sdsrange(base_path, 0, sdslen(parsed->path) - strlen(right_most_slash));
-            merged = sdscatsds(base_path, relative_path);
+            merged = sdscat(base_path, relative_path);
         } else {
-            merged = relative_path;
+            merged = sdsnew(relative_path);
         }
     }
+    sdsfree(base_uri);
+    sdsfree(relative_path);
     free_url(parsed);
     return merged;
 }
@@ -365,8 +370,9 @@ url_t *resolve_reference(sds reference, sds base) {
                 if (strstr(reference_parsed->path, "/") == reference_parsed->path) {
                     target->path = remove_dot_segment(reference_parsed->path);
                 } else {
-                    target->path = merge_path(base_parsed->path, reference_parsed->path);
-                    target->path = remove_dot_segment(target->path);
+                    sds path = merge_path(base_parsed->path, reference_parsed->path);
+                    target->path = remove_dot_segment(path);
+                    sdsfree(path);
                 }
                 target->query = safe_sdsdup(reference_parsed->query);
             }
