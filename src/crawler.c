@@ -105,6 +105,7 @@ int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *s
     // If given url doesn't contain any path, concate / as default path
     if (!parse_result->path) {
         parse_result->path = sdsnew("/");
+        sdsfree(parse_result->raw);
         parse_result->raw = recomposition(parse_result);
         url = parse_result->raw;
     }

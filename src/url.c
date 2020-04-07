@@ -17,6 +17,7 @@ sds remove_dot_segment(sds input) {
        components and the output buffer is initialized to the empty
        string.
      */
+    input = sdsdup(input);
     sds output = sdsempty();
 
     /*
@@ -52,7 +53,8 @@ sds remove_dot_segment(sds input) {
          */
         if (strstr(input, key = "/../") == input || strstr(input, key = "/..") == input) {
             sdsrange(input, strlen(key), sdslen(input));
-            sds sdsjoint = sdscatprintf(sdsempty(), "/%s", input);
+//            sds sdsjoint = sdscatprintf(sdsempty(), "/%s", input);
+            sds sdsjoint = sdscatsds(sdsnew("/"), input);
             sdsfree(input);
             input = sdsjoint;
             // If the right most slash is at the start, i.e. output buffer only has one path segment
@@ -104,6 +106,7 @@ sds remove_dot_segment(sds input) {
         sdsrange(input, copy_size, sdslen(input));
 
     }
+    sdsfree(input);
     return output;
 }
 
@@ -136,7 +139,8 @@ sds merge_path(sds base_uri, sds relative_path) {
     else {
         char *right_most_slash = strrchr(parsed->path, '/');
         if (right_most_slash) {
-            sds base_path = sdscpylen(sdsempty(), parsed->path, sdslen(parsed->path) - strlen(right_most_slash) + 1);
+            sds base_path = sdsdup(parsed->path);
+            sdsrange(base_path, 0, sdslen(parsed->path) - strlen(right_most_slash));
             merged = sdscatsds(base_path, relative_path);
         } else {
             merged = relative_path;
