@@ -373,8 +373,8 @@ url_t *resolve_reference(sds reference, sds base) {
     target->raw = recomposition(target);
 
     /* Clean up*/
-    free(reference_parsed);
-    free(base_parsed);
+    free_url(reference_parsed);
+    free_url(base_parsed);
     return target;
 
 }

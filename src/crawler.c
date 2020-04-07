@@ -80,11 +80,10 @@ int main(int agrc, char *argv[]) {
             map_remove(common_header, AUTHORIZATION);
             total++;
         }
+        sdsfree(url);
         failure += error;
     }
     deinit(&seen, &job_queue);
-
-    sdsfree(initial);
 
     log_info("Total Success: %d\nTotal Failure: %d\n", total - failure, failure);
 }
@@ -435,15 +434,16 @@ sds build_key(sds url) {
     url_t *result = parse_url(url);
     sds key = sdsempty();
     if (result->scheme) {
-        key = sdscatprintf(key, "%s://", sdsnew(lower(result->scheme)));
+        key = sdscat(key, "://");
+        key = sdscat(key, lower(result->scheme));
     }
     if (result->authority) {
-        key = sdscat(key, sdsnew(lower(result->authority)));
+        key = sdscat(key, lower(result->authority));
     }
     if (result->path) {
-        key = sdscat(key, sdsnew(result->path));
+        key = sdscat(key, result->path);
     } else {
-        key = sdscatfmt(key, "/");
+        key = sdscat(key, "/");
     }
     free_url(result);
     return key;
