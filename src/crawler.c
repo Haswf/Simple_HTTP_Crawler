@@ -179,7 +179,7 @@ int response_to_http_status(response_t *response, url_t *parse_result, sds_vec_t
         search_and_add_url(parse_result, response->body, job_queue, seen);
         error = success_handler(parse_result, response, seen);
     }
-        // Redirection
+    // Redirection
     else if (response->status_code / 100 == 3) {
         error = redirection_handler(parse_result, response, job_queue, seen);
     }
@@ -261,7 +261,7 @@ int redirection_handler(url_t *url, response_t *response, sds_vec_t *job_queue, 
     sds redirect_to = getLocation(response->header);
     if (redirect_to != NULL && url_validation(url->raw, redirect_to)) {
         log_info("\t|- Redirect to %s", redirect_to);
-        add_to_queue(redirect_to, seen, job_queue);
+        add_to_queue(sdsdup(redirect_to), seen, job_queue);
     }
     return SUCCESS;
 }
