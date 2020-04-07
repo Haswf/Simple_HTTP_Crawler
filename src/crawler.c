@@ -84,6 +84,8 @@ int main(int agrc, char *argv[]) {
         failure += error;
     }
     deinit(&seen, &job_queue);
+    map_deinit(common_header);
+    free(common_header);
 
     log_info("Total Success: %d\nTotal Failure: %d\n", total - failure, failure);
 }

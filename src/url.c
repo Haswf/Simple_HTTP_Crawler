@@ -135,8 +135,10 @@ sds merge_path(sds base_uri, sds relative_path) {
         char *right_most_slash = strrchr(parsed->path, '/');
         if (right_most_slash) {
             sds base_path = sdscatlen(sdsempty(), parsed->path, sdslen(parsed->path) - strlen(right_most_slash) + 1);
+            free_url(parsed);
             return sdscat(base_path, relative_path);
         } else {
+            free_url(parsed);
             return relative_path;
         }
     }

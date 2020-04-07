@@ -176,9 +176,9 @@ sds_map_t *extract_header(char *buffer) {
             sdstrim(value, " \n");
 
             // Add header to map
-            map_set(map, lower(name), value);
+            map_set(map, lower(name), sdsdup(value));
             sdsfree(name);
-//            sdsfree(value);
+            sdsfree(value);
         }
     }
     sdsfreesplitres(lines, header_count);
