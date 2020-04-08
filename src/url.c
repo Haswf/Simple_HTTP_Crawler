@@ -1,6 +1,6 @@
 
 /*
- * Module to handle process url
+ * Module to process url
  * written by Shuyang Fan (shuyangf@student.unimelb.edu.au)
  */
 #include "url.h"

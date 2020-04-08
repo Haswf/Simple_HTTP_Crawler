@@ -83,8 +83,13 @@ int main(int agrc, char *argv[]) {
         sds key = build_key(url);
         int *status = map_get(seen, key);
         sdsfree(key);
-        /* Fetch the page if we've never visited it before or it has been mark as retry */
-        if (!status || *status == RETRY_FLAG) {
+        /* Fetch the page if we've never visited it before, print url to stdout.
+         * This ensures url will only be printed once */
+        if (!status) {
+            printf("%s\n", url);
+            error = do_crawler(url, sdsnew("GET"), sdsempty(), job_queue, seen, common_header);
+            total++;
+        } else if (*status == RETRY_FLAG) {
             error = do_crawler(url, sdsnew("GET"), sdsempty(), job_queue, seen, common_header);
             total++;
 //        } else if (*status == POST_FLAG) {
