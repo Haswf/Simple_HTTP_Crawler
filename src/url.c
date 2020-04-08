@@ -12,6 +12,9 @@
  * @return
  */
 sds remove_dot_segment(sds input) {
+    if (!input) {
+        return NULL;
+    }
     /*
      * The input buffer is initialized with the now-appended path
        components and the output buffer is initialized to the empty
@@ -278,6 +281,9 @@ int free_url(url_t *url) {
  */
 bool is_valid_url(sds url) {
     bool result = true;
+    if (!url || !sdslen(url)) {
+        return false;
+    }
     url_t *parsed = parse_url(url);
     // According to RFC3986, an URI must have both scheme and authority
     if (!parsed->scheme || !parsed->authority) {
@@ -302,7 +308,9 @@ sds recomposition(url_t *url) {
     if (url->authority) {
         result = sdscatfmt(result, "//%s", url->authority);
     }
-    result = sdscat(result, url->path);
+    if (url->path) {
+        result = sdscat(result, url->path);
+    }
 
     if (url->query) {
         result = sdscatfmt(result, "?%s", url->query);

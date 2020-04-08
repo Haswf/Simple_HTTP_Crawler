@@ -46,8 +46,12 @@ void add_to_job_queue(url_t *url_parse, GumboNode *node, sds_vec_t *job_queue, i
         if (!is_valid_url(url)) {
             url_t *resolved = resolve_reference(url, url_parse->raw);
             sdsfree(url);
-            url = sdsnew(resolved->raw);
-            free_url(resolved);
+            if (resolved) {
+                url = sdsnew(resolved->raw);
+                free_url(resolved);
+            } else {
+                url = NULL;
+            }
         }
         /**
          * if resolved path is valid according to the standard and
