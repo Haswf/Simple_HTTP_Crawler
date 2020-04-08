@@ -50,6 +50,12 @@ int deinit(int_map_t **seen, sds_vec_t **job_queue, sds_map_t **common_header) {
     return !(*job_queue) && !(*seen) && !(*common_header);
 }
 
+/**
+ * Driver function to run the crawler
+ * @param agrc
+ * @param argv
+ * @return
+ */
 int main(int agrc, char *argv[]) {
     int_map_t *seen = NULL;
     sds_vec_t *job_queue = NULL;
