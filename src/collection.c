@@ -1,10 +1,16 @@
-//
-// Created by Haswe on 4/6/2020.
-//
+/**
+ * Module for data structures used in the project.
+ * Created by Shuyang Fan on 3/25/2020.
+ */
 
 #include "collection.h"
 #include "config.h"
 
+/**
+ * Free a sds_map and its stored value.
+ * @param map
+ * @return
+ */
 int free_sds_map(sds_map_t **map) {
     if (*map) {
         const char *key;

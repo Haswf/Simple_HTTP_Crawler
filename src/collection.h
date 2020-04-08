@@ -1,5 +1,5 @@
 /**
- * Module to define data structures used in the project.
+ * Module for data structures used in the project.
  * Created by Shuyang Fan on 3/25/2020.
  */
 

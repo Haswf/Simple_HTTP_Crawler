@@ -5,14 +5,17 @@
 
 #ifndef COMP30023_2020_PROJECT1_CONFIG_H
 #define COMP30023_2020_PROJECT1_CONFIG_H
+
 #include "../lib/log/log.h"
-
-#define PORT 80
-
 
 /**
  * Configuration
  */
+
+/**
+ * Destination Port number
+ */
+#define PORT 80
 
 /**
  * Log level
@@ -34,16 +37,19 @@
 /* Cross domain fetching */
 #define CROSS_DOMAIN_POLICY SECOND_LEVEL_DOMAIN
 /* Options */
+/* SAME_DOMAIN follow urls with exact same domain
+ * SECOND_LEVEL_DOMAIN follow urls with exact same domain except second level domain
+ */
 #define SAME_DOMAIN 0
 #define SECOND_LEVEL_DOMAIN 1
 
 /*
  * Content-length validation
  */
-#define CONTENT_LENGTH_POLICY ALL
+#define CONTENT_LENGTH_POLICY STRICT
 /* Options
- * STRICT
- * ALL
+ * STRICT Response without content-header will be discarded
+ * ALL Response without content-header will be parsed
  * */
 #define STRICT 1
 
