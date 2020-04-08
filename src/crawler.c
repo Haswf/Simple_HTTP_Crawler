@@ -1,6 +1,6 @@
-//
-// Created by Haswe on 3/25/2020.
-//
+/**
+ * Crawler to fetch pages
+ */
 
 
 #include "crawler.h"
@@ -24,21 +24,30 @@ int init(int_map_t **seen, sds_vec_t **job_queue, sds_map_t **common_header) {
 }
 
 /**
- *
+ * free space allocated to run crawler
  * @param seen
  * @param job_queue
  * @return
  */
 int deinit(int_map_t **seen, sds_vec_t **job_queue, sds_map_t **common_header) {
+    /*
+     * Free seen map
+     */
     map_deinit(*seen);
     free(*seen);
     *seen = NULL;
+    /*
+     * Free common header map
+     */
     free_sds_map(common_header);
     *common_header = NULL;
+    /*
+     * Free job queue
+     */
     vec_deinit(*job_queue);
     free(*job_queue);
     *job_queue = NULL;
-    return !(*job_queue) && !(*seen);
+    return !(*job_queue) && !(*seen) && !(*common_header);
 }
 
 int main(int agrc, char *argv[]) {
@@ -46,6 +55,7 @@ int main(int agrc, char *argv[]) {
     sds_vec_t *job_queue = NULL;
     sds_map_t *common_header = NULL;
 
+    /* Print usage if no url is given in argv */
     if (agrc < 1) {
         printf("Usage: crawler [URL]");
         exit(0);
@@ -59,23 +69,28 @@ int main(int agrc, char *argv[]) {
     map_set(common_header, "User-Agent", sdsnew(USER_AGENT));
     map_set(common_header, "Accept", sdsnew(HTML_ONLY));
 
+    /* Add url from argv to job queue */
     sds initial = sdsnew(argv[1]);
     add_to_queue(initial, seen, job_queue);
 
+    /* Keep fetching until the jon queue is empty */
     while (job_queue->length > 0) {
-        int error = 0;
+        int error = SUCCESS;
+        /* Pop a url from job queue */
         sds url = vec_pop(job_queue);
 
+        /* Check the status of the url */
         sds key = build_key(url);
         int *status = map_get(seen, key);
         sdsfree(key);
-        // Fetch the page only if we've never visited it before or it has been mark as retry
+        /* Fetch the page if we've never visited it before or it has been mark as retry */
         if (!status || *status == RETRY_FLAG) {
             error = do_crawler(url, sdsnew("GET"), sdsempty(), job_queue, seen, common_header);
             total++;
-        } else if (*status == POST_FLAG) {
-            error = do_crawler(url, sdsnew("POST"), sdsempty(), job_queue, seen, common_header);
-            total++;
+//        } else if (*status == POST_FLAG) {
+//            error = do_crawler(url, sdsnew("POST"), sdsempty(), job_queue, seen, common_header);
+//            total++;
+            /* Provides additional header for authorization */
         } else if (*status == AUTH_FLAG) {
             map_set(common_header, AUTHORIZATION, sdscatprintf(sdsempty(), "Basic %s", TOKEN));
             error = do_crawler(url, sdsnew("GET"), sdsempty(), job_queue, seen, common_header);
@@ -90,41 +105,65 @@ int main(int agrc, char *argv[]) {
     log_info("Total Success: %d\nTotal Failure: %d\n", total - failure, failure);
 }
 
-
+/**
+ * crawler a page and parse the response
+ * @param url
+ * @param method
+ * @param body
+ * @param job_queue
+ * @param seen
+ * @param header
+ * @return
+ */
 int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *seen, sds_map_t *header) {
     url_t *parse_result = NULL;
     request_t *request = NULL;
     response_t *response = NULL;
-    int error = 0;
+
+    int error = SUCCESS;
+    /* if given url doesn't appear to be valid, clean up and return */
     if (!is_valid_url(url)) {
         log_error("Invalid URL %s- Missing scheme or host", url);
         return clean_up(request, response, parse_result);
     }
 
+    /* Print full url to stdout and stderr*/
+    printf("%s\n", url);
+    log_info("Fetching: %s", url);
+
+    /* Parse the given url */
     parse_result = parse_url(url);
-    // If given url doesn't contain any path, concate / as default path
+    /* If given url doesn't contain any path, use / as default path */
     if (!parse_result->path) {
         parse_result->path = sdsnew("/");
         sdsfree(parse_result->raw);
         parse_result->raw = recomposition(parse_result);
-        url = parse_result->raw;
     }
-    log_info("Fetching: %s", url);
-    printf("%s\n", url);
 
+    /*
+     * Build HTTP request
+     */
     request = create_http_request(sdsnew(parse_result->authority), sdsnew(parse_result->path),
                                   method, body);
+    /*
+     * Add headers to request
+     */
     set_headers(request, header);
 
     response = send_http_request(request, PORT, &error);
+
+    /* Exception handling if anything failed in sending a request */
     if (error) {
         failure_handler(parse_result, response, seen);
         return clean_up(request, response, parse_result);
     }
-    // print response header and body for debugging
+    /* print response header and body for debugging */
     print_header(response);
     print_body(response);
 
+    /**
+     * if the page appears to be truncated, mark it for retry
+     */
     if (is_truncated_page(response)) {
         error = retry_handler(parse_result, response, job_queue, seen);
         mark_retry(sdsnew(parse_result->raw), seen);
@@ -133,6 +172,9 @@ int do_crawler(sds url, sds method, sds body, sds_vec_t *job_queue, int_map_t *s
         error = response_to_http_status(response, parse_result, job_queue, seen);
     }
 
+    /*
+     * Clean up and return
+     */
     clean_up(request, response, parse_result);
     return error;
 }
@@ -172,48 +214,83 @@ int clean_up(request_t *request, response_t *response, url_t *parse_result) {
     return ERROR;
 }
 
+/**
+ * Process a response according to the HTTP status code
+ * @param response
+ * @param parse_result
+ * @param job_queue
+ * @param seen
+ * @return
+ */
 int response_to_http_status(response_t *response, url_t *parse_result, sds_vec_t *job_queue, int_map_t *seen) {
     int error;
-
-    // Success
+    /*
+     * Parse the page and marked it as visited if status code is 200
+     */
     if (response->status_code / 100 == 2) {
         search_and_add_url(parse_result, response->body, job_queue, seen);
         error = success_handler(parse_result, response, seen);
     }
-    // Redirection
+        /*
+         * if http status indicates a redirection, extract location header from response,
+         * and add the new url to job queue.
+         */
     else if (response->status_code / 100 == 3) {
         error = redirection_handler(parse_result, response, job_queue, seen);
     }
 
-        // Client Error
+        /*
+         * Client Error
+         */
     else if (response->status_code / 100 == 4) {
+        /**
+         * HTTP status code 404, 410, 414 will be treated as permanent failure.
+         *  These pages won't be refetched.
+         */
         if (response->status_code == NOT_FOUND || response->status_code == GONE ||
             response->status_code == URI_TOO_LONG) {
             search_and_add_url(parse_result, response->body, job_queue, seen);
             error = failure_handler(parse_result, response, seen);
+            /**
+             * If authorization is required to fetch a page, mark it as AUTH_REQUIRED
+             * and push it back to job queue. Authorization header will be provided
+             * for next fetch.
+             */
         } else if (response->status_code == UNAUTHORISED) {
             error = retry_handler(parse_result, response, job_queue, seen);
             mark_auth_required(parse_result->raw, seen);
+            /**
+             * Other status codes under client error categories will
+             * be treated as permanent failure. These pages won't be refetched again.
+             */
         } else {
             error = failure_handler(parse_result, response, seen);
         }
     }
 
-        // Server error
+        /*
+         *  Server error
+         */
     else if (response->status_code / 100 == 5) {
+        /**
+         * HTTP status code 503 and 504 will be treated as temporary failure.
+         * A attempt to refetch these pages will be made later.
+         */
         if (response->status_code == SERVICE_UNAVAILABLE || response->status_code == GATEWAY_TIMEOUT) {
             // TODO: The crawler will attempt to revisit a page when the status code of a response indicates a temporary failure.
             error = retry_handler(parse_result, response, job_queue, seen);
             mark_retry(parse_result->raw, seen);
             search_and_add_url(parse_result, response->body, job_queue, seen);
+            /**
+             * Other status codes under server error categories will
+             * be treated as permanent failure. These pages won't be refetched again.
+             */
         } else {
             error = failure_handler(parse_result, response, seen);
         }
 
     }
-        /*
-         * TODO: Note that responses with other status codes may be thrown by the server (e.g., when a malformed request is made) but need not be parsed.
-         */
+        /* Any other status codes will be treated as permanent failure */
     else {
         error = failure_handler(parse_result, response, seen);
     }
@@ -232,7 +309,9 @@ int success_handler(url_t *url, response_t *response, int_map_t *seen) {
     if (content_type_validation(response->header)) {
         mark_visited(url->raw, seen);
 
-        // TODO: "Two pages are considered to be the same page if the URLs indicate that they are the same."
+        /*
+         * Save alternatively path to seen
+         */
         sds alternative_path = getContentLocation(response->header);
         if (alternative_path) {
             url_t *resolved = resolve_reference(alternative_path, url->raw);
@@ -258,7 +337,9 @@ int success_handler(url_t *url, response_t *response, int_map_t *seen) {
 int redirection_handler(url_t *url, response_t *response, sds_vec_t *job_queue, int_map_t *seen) {
     mark_visited(url->raw, seen);
     log_info("\t|- succeeded\t%d", response->status_code);
-
+    /*
+     * Add path in Location header to the job queue if presented
+     */
     sds redirect_to = getLocation(response->header);
     if (redirect_to != NULL && url_validation(url->raw, redirect_to)) {
         log_info("\t|- Redirect to %s", redirect_to);
@@ -276,13 +357,16 @@ int redirection_handler(url_t *url, response_t *response, sds_vec_t *job_queue, 
  * @return
  */
 int failure_handler(url_t *url, response_t *response, int_map_t *seen) {
+    /*
+     * Mark a url as failure
+     */
     mark_failure(url->raw, seen);
     if (response) {
         log_info("\t|- failed\t\t%d\tMarked as failure", response->status_code);
     } else {
         log_info("\t|- failed\t No response received");
     }
-    return 1;
+    return ERROR;
 }
 
 /**
@@ -439,12 +523,15 @@ sds build_key(sds url) {
     url_t *result = parse_url(url);
     sds key = sdsempty();
     if (result->scheme) {
-        key = sdscat(key, "://");
         key = sdscat(key, lower(result->scheme));
+        key = sdscat(key, "://");
     }
     if (result->authority) {
         key = sdscat(key, lower(result->authority));
     }
+    /*
+     * If the path is not presented in the url, use / as default path
+     */
     if (result->path) {
         key = sdscat(key, result->path);
     } else {
